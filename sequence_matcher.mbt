@@ -483,6 +483,12 @@ pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(
   self : SequenceMatcher[T],
   n? : Int = 3,
 ) -> Array[Array[Opcode]] {
+  // Any n >= max(len(a), len(b), 1) gives the same groups; clamping keeps
+  // `n + n` and `i1 + n` from overflowing for huge context sizes.
+  let n = @cmp.minimum(
+    n,
+    @cmp.maximum(@cmp.maximum(self.a.length(), self.b.length()), 1),
+  )
   let codes = self.get_opcodes().copy()
   if codes.is_empty() {
     codes.push({ tag: Equal, i1: 0, i2: 1, j1: 0, j2: 1, })

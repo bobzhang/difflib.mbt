@@ -652,7 +652,7 @@ test "TestCloseMatches.test_invalid_inputs" {
       #|  ValueError("n must be > 0: -1"),
       #|  ValueError("cutoff must be in [0.0, 1.0]: 1.1"),
       #|  ValueError("cutoff must be in [0.0, 1.0]: -0.1"),
-      #|  ValueError("cutoff must be in [0.0, 1.0]: NaN"),
+      #|  ValueError("cutoff must be in [0.0, 1.0]: nan"),
       #|]
     ),
   )

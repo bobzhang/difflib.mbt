@@ -90,12 +90,81 @@ fn py_str_compare(x : String, y : String) -> Int {
 }
 
 ///|
-/// Approximates Python's `repr(float)`: integral values keep a `.0` suffix.
+/// Python's `repr(float)`: the shortest round-tripping digits, in fixed
+/// notation when the decimal exponent is in `[-4, 16)` and scientific
+/// notation (`1e+16`, `1.5e-07`) otherwise.
 fn py_float_repr(x : Double) -> String {
+  if x.is_nan() {
+    return "nan"
+  }
+  if x.is_inf() {
+    return if x > 0.0 { "inf" } else { "-inf" }
+  }
+  // Decompose MoonBit's shortest representation into sign, significant
+  // digits and `decpt`, where x = 0.d1d2... * 10^decpt.
   let s = x.to_string()
-  if x.is_nan() || x.is_inf() || s.contains(".") || s.contains("e") {
-    s
+  let negative = s.has_prefix("-")
+  let s = if negative { s.unsafe_substring(start=1, end=s.length()) } else { s }
+  let (mantissa, exp) = match s.find("e") {
+    Some(i) => {
+      let e = s.unsafe_substring(start=i + 1, end=s.length())
+      let e = if e.has_prefix("+") {
+        e.unsafe_substring(start=1, end=e.length())
+      } else {
+        e
+      }
+      (
+        s.unsafe_substring(start=0, end=i),
+        @string.parse_int(e) catch {
+          _ => 0
+        },
+      )
+    }
+    None => (s, 0)
+  }
+  let (int_part, frac_part) = match mantissa.find(".") {
+    Some(i) =>
+      (
+        mantissa.unsafe_substring(start=0, end=i),
+        mantissa.unsafe_substring(start=i + 1, end=mantissa.length()),
+      )
+    None => (mantissa, "")
+  }
+  let mut digits = int_part + frac_part
+  let mut decpt = int_part.length() + exp
+  while digits.has_prefix("0") {
+    digits = digits.unsafe_substring(start=1, end=digits.length())
+    decpt -= 1
+  }
+  while digits.has_suffix("0") {
+    digits = digits.unsafe_substring(start=0, end=digits.length() - 1)
+  }
+  let sign = if negative { "-" } else { "" }
+  if digits == "" {
+    // MoonBit prints -0.0 as "0"; Python keeps the sign
+    return if 1.0 / x < 0.0 { "-0.0" } else { "0.0" }
+  }
+  let n = digits.length()
+  if decpt <= -4 || decpt > 16 {
+    let e = decpt - 1
+    let mant = if n == 1 {
+      digits
+    } else {
+      digits.unsafe_substring(start=0, end=1) +
+      "." +
+      digits.unsafe_substring(start=1, end=n)
+    }
+    let e_abs = e.abs()
+    let e_str = if e_abs < 10 { "0\{e_abs}" } else { e_abs.to_string() }
+    sign + mant + (if e < 0 { "e-" } else { "e+" }) + e_str
+  } else if decpt <= 0 {
+    sign + "0." + "0".repeat(-decpt) + digits
+  } else if decpt >= n {
+    sign + digits + "0".repeat(decpt - n) + ".0"
   } else {
-    s + ".0"
+    sign +
+    digits.unsafe_substring(start=0, end=decpt) +
+    "." +
+    digits.unsafe_substring(start=decpt, end=n)
   }
 }

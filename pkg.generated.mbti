@@ -8,7 +8,7 @@ import {
 // Values
 pub fn context_diff(Array[String], Array[String], fromfile? : String, tofile? : String, fromfiledate? : String, tofiledate? : String, n? : Int, lineterm? : String, autojunk? : Bool) -> Array[String]
 
-pub fn diff_bytes(DiffFormat, Array[Bytes], Array[Bytes], fromfile? : Bytes, tofile? : Bytes, fromfiledate? : Bytes, tofiledate? : Bytes, n? : Int, lineterm? : Bytes) -> Array[Bytes]
+pub fn diff_bytes(DiffFormat, Array[Bytes], Array[Bytes], fromfile? : Bytes, tofile? : Bytes, fromfiledate? : Bytes, tofiledate? : Bytes, n? : Int, lineterm? : Bytes, autojunk? : Bool) -> Array[Bytes]
 
 pub fn get_close_matches(String, Array[String], n? : Int, cutoff? : Double, autojunk? : Bool) -> Array[String] raise DiffError
 

@@ -283,7 +283,8 @@ fn latin1_to_bytes(s : String) -> Bytes {
 ///
 /// Inputs are losslessly converted to strings (one character per byte) so
 /// that files with unknown or inconsistent encodings can be compared, and the
-/// output is encoded back to bytes. This mirrors Python's `diff_bytes`.
+/// output is encoded back to bytes. This mirrors Python's `diff_bytes`;
+/// `autojunk` is forwarded to the underlying diff function.
 ///
 /// # Example
 /// ```mbt check
@@ -313,6 +314,7 @@ pub fn diff_bytes(
   tofiledate? : Bytes = b"",
   n? : Int = 3,
   lineterm? : Bytes = b"\n",
+  autojunk? : Bool = true,
 ) -> Array[Bytes] {
   let a = a.map(line => bytes_to_latin1(line))
   let b = b.map(line => bytes_to_latin1(line))
@@ -332,6 +334,7 @@ pub fn diff_bytes(
         tofiledate~,
         n~,
         lineterm~,
+        autojunk~,
       )
     Context =>
       context_diff(
@@ -343,6 +346,7 @@ pub fn diff_bytes(
         tofiledate~,
         n~,
         lineterm~,
+        autojunk~,
       )
   }
   lines.map(latin1_to_bytes)

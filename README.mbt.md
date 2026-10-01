@@ -165,10 +165,11 @@ test "html diff" {
   diff function. Each byte becomes one character in the range U+0000–U+00FF
   and is encoded back afterwards. This is lossless and gives the same output
   as Python's `ascii`/`surrogateescape` round trip.
-- `HtmlDiff::make_file(charset=...)` recognises the ASCII and Latin-1 families
-  and replaces characters they cannot encode with `&#NNN;`, as
-  `xmlcharrefreplace` does. Any other charset name is assumed to encode all of
-  Unicode; Python would raise `LookupError` for an unknown codec.
+- `HtmlDiff::make_file(charset=...)` emulates `encode(charset,
+  "xmlcharrefreplace")` for the ASCII, Latin-1 and UTF-8/16/32 codecs and all
+  of their Python aliases (`US-ASCII`, `ISO-8859-1`, `latin1`, `utf8`, ...).
+  It assumes that any other charset name can encode all of Unicode, where
+  Python would use that codec or raise `LookupError`.
 - Like Python's class attribute `HtmlDiff._default_prefix`, the anchor prefix
   counter is global and increases on every `make_table`/`make_file` call.
   `HtmlDiff::reset_prefix_counter()` resets it, for example to get

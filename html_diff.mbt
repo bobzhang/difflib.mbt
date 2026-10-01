@@ -94,33 +94,6 @@ pub fn HtmlDiff::make_file(
 }
 
 ///|
-/// Replaces characters that `charset` cannot encode by `&#NNN;` references,
-/// emulating Python's `encode(charset, 'xmlcharrefreplace')`.
-fn xml_charref_replace(s : String, charset : String) -> String {
-  let normalized = charset.to_lower().replace_all(old="_", new="-")
-  let max_code = match normalized {
-    "ascii" | "us-ascii" | "646" | "us" => 0x7f
-    "latin-1"
-    | "latin1"
-    | "iso-8859-1"
-    | "iso8859-1"
-    | "8859"
-    | "cp819"
-    | "l1" => 0xff
-    _ => return s
-  }
-  let buf = StringBuilder()
-  for c in s {
-    if c.to_int() > max_code {
-      buf.write_string("&#\{c.to_int()};")
-    } else {
-      buf.write_char(c)
-    }
-  }
-  buf.to_string()
-}
-
-///|
 /// Returns from/to line lists with tabs expanded and newlines removed.
 ///
 /// Instead of tab characters being replaced by the number of spaces needed to

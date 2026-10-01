@@ -145,3 +145,71 @@ test "xml_charref_replace" {
   )
   assert_eq(xml_charref_replace("aé€😀", "utf-8"), "aé€😀")
 }
+
+///|
+test "py_float_repr matches Python repr" {
+  let cases = [
+    (1.0e20, "1e+20"),
+    (1.0e16, "1e+16"),
+    (1.0e15, "1000000000000000.0"),
+    (123456789012345680.0, "1.2345678901234568e+17"),
+    (0.0001, "0.0001"),
+    (0.00001, "1e-05"),
+    (1.5e-7, "1.5e-07"),
+    (-2.5, "-2.5"),
+    (1.1, "1.1"),
+    (100.0, "100.0"),
+    (0.0, "0.0"),
+    (-0.0, "-0.0"),
+    (0.0 / 0.0, "nan"),
+    (1.0 / 0.0, "inf"),
+    (-1.0 / 0.0, "-inf"),
+    (1.7976931348623157e308, "1.7976931348623157e+308"),
+    (5.0e-324, "5e-324"),
+    (12345.678, "12345.678"),
+  ]
+  for case_ in cases {
+    assert_eq(py_float_repr(case_.0), case_.1)
+  }
+}
+
+///|
+test "charset aliases follow Python codecs" {
+  for
+    name in [
+      "ascii", "US-ASCII", "ANSI_X3.4-1968", "csASCII", "646", " us ", "iso646-us",
+    ] {
+    assert_eq(xml_charref_replace("é", name), "&#233;", msg=name)
+  }
+  for
+    name in [
+      "latin-1", "Latin 1", "ISO-8859-1", "iso8859", "iso_8859_1:1987", "cp819",
+      "L1",
+    ] {
+    assert_eq(xml_charref_replace("é😀", name), "é&#128512;", msg=name)
+  }
+  for name in ["utf-8", "UTF8", "u8", "utf-16", "utf_32_le", "utf-8-sig"] {
+    assert_eq(xml_charref_replace("é😀", name), "é😀", msg=name)
+  }
+  // unknown or unsupported codecs are assumed to cover all of Unicode
+  assert_eq(xml_charref_replace("é😀", "cp1252"), "é😀")
+}
+
+///|
+test "huge context sizes do not overflow" {
+  let max = 2147483647
+  assert_true(unified_diff(["x"], ["x"], n=1073741824, lineterm="").is_empty())
+  assert_true(unified_diff(["x"], ["x"], n=max, lineterm="").is_empty())
+  assert_eq(
+    unified_diff(["a", "x"], ["b", "x"], n=max, lineterm=""),
+    unified_diff(["a", "x"], ["b", "x"], n=2, lineterm=""),
+  )
+  assert_eq(
+    context_diff(["a", "x"], ["b", "x"], n=max, lineterm=""),
+    context_diff(["a", "x"], ["b", "x"], n=2, lineterm=""),
+  )
+  assert_eq(
+    mdiff(["a", "x", "y"], ["b", "x", "y"], context=max),
+    mdiff(["a", "x", "y"], ["b", "x", "y"], context=3),
+  )
+}

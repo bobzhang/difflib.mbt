@@ -6,6 +6,7 @@ warnings = "-79"
 import {
   "moonbitlang/core/cmp",
   "moonbitlang/core/deque",
+  "moonbitlang/core/string",
 }
 
 import {
