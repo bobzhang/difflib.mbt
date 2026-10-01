@@ -1,0 +1,55 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/difflib"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct Match {
+  a : Int
+  b : Int
+  size : Int
+} derive(Compare, Eq, ToJson, @debug.Debug)
+
+pub(all) struct Opcode {
+  tag : Tag
+  i1 : Int
+  i2 : Int
+  j1 : Int
+  j2 : Int
+} derive(Eq, ToJson, @debug.Debug)
+
+pub struct SequenceMatcher[T] {
+  // private fields
+}
+pub fn[T] SequenceMatcher::bjunk(Self[T]) -> Array[T]
+pub fn[T] SequenceMatcher::bpopular(Self[T]) -> Array[T]
+pub fn[T : Hash + Eq] SequenceMatcher::find_longest_match(Self[T], alo? : Int, ahi? : Int, blo? : Int, bhi? : Int) -> Match
+pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(Self[T], n? : Int) -> Array[Array[Opcode]]
+pub fn[T : Hash + Eq] SequenceMatcher::get_matching_blocks(Self[T]) -> Array[Match]
+pub fn[T : Hash + Eq] SequenceMatcher::get_opcodes(Self[T]) -> Array[Opcode]
+pub fn[T : Hash + Eq] SequenceMatcher::new(isjunk? : (T) -> Bool, a? : Array[T], b? : Array[T], autojunk? : Bool) -> Self[T]
+pub fn[T : Hash + Eq] SequenceMatcher::quick_ratio(Self[T]) -> Double
+pub fn[T : Hash + Eq] SequenceMatcher::ratio(Self[T]) -> Double
+pub fn[T] SequenceMatcher::real_quick_ratio(Self[T]) -> Double
+pub fn[T] SequenceMatcher::set_seq1(Self[T], Array[T]) -> Unit
+pub fn[T : Hash + Eq] SequenceMatcher::set_seq2(Self[T], Array[T]) -> Unit
+pub fn[T : Hash + Eq] SequenceMatcher::set_seqs(Self[T], Array[T], Array[T]) -> Unit
+
+pub(all) enum Tag {
+  Replace
+  Delete
+  Insert
+  Equal
+} derive(Eq, ToJson, @debug.Debug)
+pub fn Tag::name(Self) -> String
+pub impl Show for Tag
+
+// Type aliases
+
+// Traits

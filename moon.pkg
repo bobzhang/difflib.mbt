@@ -1,0 +1,8 @@
+// The compiler emits warning 79 (implicit_impl_as_method) for public derived
+// traits; explicit `extend` declarations would add method-form APIs to the
+// generated interface, so suppress it package-wide.
+warnings = "-79"
+
+import {
+  "moonbitlang/core/cmp",
+}
