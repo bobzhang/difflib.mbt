@@ -7,3 +7,7 @@ import {
   "moonbitlang/core/cmp",
   "moonbitlang/core/deque",
 }
+
+import {
+  "moonbitlang/core/json",
+} for "test"
