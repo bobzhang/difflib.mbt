@@ -1,0 +1,6 @@
+// Differential tests against a corpus generated from the pinned CPython
+// difflib (tools/gen_corpus.py). Test-only package, not published.
+import {
+  "bobzhang/difflib",
+  "moonbitlang/core/json",
+} for "test"

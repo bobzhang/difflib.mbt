@@ -8,7 +8,3 @@ import {
   "moonbitlang/core/deque",
   "moonbitlang/core/string",
 }
-
-import {
-  "moonbitlang/core/json",
-} for "test"

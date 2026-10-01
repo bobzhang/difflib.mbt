@@ -8,6 +8,5 @@ node_modules/
 .github/
 # The randomized differential corpus (~3 MB) and its Python generators are
 # only needed for this repository's own tests.
-corpus_fixtures_test.mbt
-corpus_test.mbt
+corpus/
 tools/

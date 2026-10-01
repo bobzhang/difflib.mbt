@@ -204,7 +204,7 @@ git remote add origin https://github.com/python/cpython
 git sparse-checkout set --no-cone /Lib/difflib.py /Lib/test/test_difflib.py /Lib/test/test_difflib_expect.html
 git fetch --depth 1 --filter=blob:none origin 763b6edb0ec959bdfb78f098b76829365de36ca5
 git checkout FETCH_HEAD && cd ../..
-python3 tools/gen_corpus.py > corpus_fixtures_test.mbt
+python3 tools/gen_corpus.py > corpus/corpus_fixtures_test.mbt
 python3 tools/gen_html_fixtures.py .repos/cpython/Lib tools > html_fixtures_test.mbt
 python3 tools/gen_templates.py .repos/cpython/Lib > html_templates.mbt
 python3 tools/gen_charset.py > charset.mbt

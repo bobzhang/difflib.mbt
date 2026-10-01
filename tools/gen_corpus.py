@@ -1,6 +1,6 @@
 """Generate a randomized differential corpus from the pinned CPython difflib.
 
-Usage: python3 tools/gen_corpus.py > corpus_fixtures_test.mbt
+Usage: python3 tools/gen_corpus.py > corpus/corpus_fixtures_test.mbt
 
 Each case is one JSON object per line, embedded in a MoonBit raw string.
 """
