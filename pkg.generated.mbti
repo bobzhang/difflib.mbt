@@ -6,10 +6,39 @@ import {
 }
 
 // Values
+pub fn context_diff(Array[String], Array[String], fromfile? : String, tofile? : String, fromfiledate? : String, tofiledate? : String, n? : Int, lineterm? : String, autojunk? : Bool) -> Array[String]
+
+pub fn diff_bytes(DiffFormat, Array[Bytes], Array[Bytes], fromfile? : Bytes, tofile? : Bytes, fromfiledate? : Bytes, tofiledate? : Bytes, n? : Int, lineterm? : Bytes) -> Array[Bytes]
+
+pub fn get_close_matches(String, Array[String], n? : Int, cutoff? : Double, autojunk? : Bool) -> Array[String] raise DiffError
+
+pub fn is_character_junk(Char) -> Bool
+
+pub fn is_line_junk(String) -> Bool
+
+pub fn ndiff(Array[String], Array[String], linejunk? : (String) -> Bool, charjunk? : (Char) -> Bool, autojunk? : Bool) -> Array[String]
+
+pub fn restore(Array[String], Int) -> Array[String] raise DiffError
+
+pub fn unified_diff(Array[String], Array[String], fromfile? : String, tofile? : String, fromfiledate? : String, tofiledate? : String, n? : Int, lineterm? : String, autojunk? : Bool, color? : Bool) -> Array[String]
 
 // Errors
+pub(all) suberror DiffError {
+  ValueError(String)
+} derive(Eq, @debug.Debug)
 
 // Types and methods
+pub(all) enum DiffFormat {
+  Unified
+  Context
+} derive(Eq, @debug.Debug)
+
+pub struct Differ {
+  // private fields
+}
+pub fn Differ::compare(Self, Array[String], Array[String]) -> Array[String]
+pub fn Differ::new(linejunk? : (String) -> Bool, charjunk? : (Char) -> Bool, autojunk? : Bool) -> Self
+
 pub(all) struct Match {
   a : Int
   b : Int
