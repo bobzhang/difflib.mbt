@@ -241,6 +241,167 @@ fn check_close(case_ : Json) -> Unit raise {
 }
 
 ///|
+fn check_stateful(case_ : Json) -> Unit raise {
+  let isjunk = char_junk(str_field(case_, "junk"))
+  let s = @difflib.SequenceMatcher::new(
+    isjunk?,
+    a=str_field(case_, "a").to_array(),
+    b=str_field(case_, "b").to_array(),
+    autojunk=bool_field(case_, "autojunk"),
+  )
+  guard field(case_, "ops") is Array(ops) else { fail("bad ops") }
+  for op in ops {
+    guard op is Array([String(name), arg, expected]) else { fail("bad op") }
+    match (name, arg) {
+      ("set_seq1", String(x)) => s.set_seq1(x.to_array())
+      ("set_seq2", String(x)) => s.set_seq2(x.to_array())
+      ("set_seqs", Array([String(x), String(y)])) =>
+        s.set_seqs(x.to_array(), y.to_array())
+      ("ratio", _) => assert_eq(Json::number(s.ratio()), expected)
+      ("quick_ratio", _) => assert_eq(Json::number(s.quick_ratio()), expected)
+      ("real_quick_ratio", _) =>
+        assert_eq(Json::number(s.real_quick_ratio()), expected)
+      ("opcodes", _) =>
+        assert_eq(show_opcodes(s.get_opcodes()), opcodes_of(expected))
+      ("blocks", _) => {
+        guard expected is Array(blocks) else { fail("bad blocks") }
+        assert_eq(
+          s.get_matching_blocks().map(m => [m.a, m.b, m.size]),
+          blocks.map(blk => {
+            guard blk is Array(xs) else { abort("bad block") }
+            xs.map(int_of)
+          }),
+        )
+      }
+      ("grouped", n) => {
+        guard expected is Array(groups) else { fail("bad grouped") }
+        // Python mutates its cached opcodes here; compare a fresh matcher's
+        // groups too, so both code paths are exercised.
+        assert_eq(
+          s.get_grouped_opcodes(n=int_of(n)).map(g => show_opcodes(g)),
+          groups.map(opcodes_of),
+        )
+      }
+      ("bjunk", _) =>
+        assert_eq(sorted_strings(s.bjunk()), sorted_json_strings(expected))
+      ("bpopular", _) =>
+        assert_eq(sorted_strings(s.bpopular()), sorted_json_strings(expected))
+      ("lm", Array([alo, ahi, blo, bhi])) => {
+        let m = s.find_longest_match(
+          alo=int_of(alo),
+          ahi=int_of(ahi),
+          blo=int_of(blo),
+          bhi=int_of(bhi),
+        )
+        guard expected is Array([ea, eb, esize]) else { fail("bad lm") }
+        assert_eq((m.a, m.b, m.size), (int_of(ea), int_of(eb), int_of(esize)))
+      }
+      _ => fail("unknown op \{name}")
+    }
+  }
+}
+
+///|
+fn[T : Show] sorted_strings(xs : Array[T]) -> Array[String] {
+  let out = xs.map(x => x.to_string())
+  out.sort()
+  out
+}
+
+///|
+fn sorted_json_strings(j : Json) -> Array[String] {
+  let out = strings_of(j)
+  out.sort()
+  out
+}
+
+///|
+fn check_items(case_ : Json) -> Unit raise {
+  let isjunk : ((String) -> Bool)? = match str_field(case_, "junk") {
+    "is_line_junk" => Some(@difflib.is_line_junk)
+    _ => None
+  }
+  let s = @difflib.SequenceMatcher::new(
+    isjunk?,
+    a=strings_field(case_, "a"),
+    b=strings_field(case_, "b"),
+    autojunk=bool_field(case_, "autojunk"),
+  )
+  assert_eq(show_opcodes(s.get_opcodes()), opcodes_of(field(case_, "opcodes")))
+  assert_eq(s.ratio(), num_field(case_, "ratio"))
+  assert_eq(s.quick_ratio(), num_field(case_, "quick_ratio"))
+  assert_eq(
+    sorted_strings(s.bjunk()),
+    sorted_json_strings(field(case_, "bjunk")),
+  )
+  assert_eq(
+    sorted_strings(s.bpopular()),
+    sorted_json_strings(field(case_, "bpopular")),
+  )
+}
+
+///|
+fn hex_to_bytes(hex : String) -> Bytes {
+  let digit = (c : UInt16) => {
+    let c = c.to_int()
+    if c >= '0'.to_int() && c <= '9'.to_int() {
+      c - '0'.to_int()
+    } else {
+      c - 'a'.to_int() + 10
+    }
+  }
+  Bytes::makei(hex.length() / 2, i => {
+    (digit(hex[2 * i]) * 16 + digit(hex[2 * i + 1])).to_byte()
+  })
+}
+
+///|
+fn check_bytes(case_ : Json) -> Unit raise {
+  let hex_lines = (key : String) => strings_field(case_, key).map(hex_to_bytes)
+  let format : @difflib.DiffFormat = match str_field(case_, "format") {
+    "unified" => Unified
+    _ => Context
+  }
+  assert_eq(
+    @difflib.diff_bytes(
+      format,
+      hex_lines("a"),
+      hex_lines("b"),
+      fromfile=hex_to_bytes(str_field(case_, "fromfile")),
+      tofile=hex_to_bytes(str_field(case_, "tofile")),
+      fromfiledate=hex_to_bytes(str_field(case_, "fromfiledate")),
+      tofiledate=hex_to_bytes(str_field(case_, "tofiledate")),
+      n=int_field(case_, "n"),
+      lineterm=hex_to_bytes(str_field(case_, "lineterm")),
+    ),
+    hex_lines("result"),
+  )
+}
+
+///|
+fn check_close_error(case_ : Json) -> Unit raise {
+  let cutoff = match field(case_, "cutoff") {
+    String("nan") => 0.0 / 0.0
+    String("inf") => 1.0 / 0.0
+    String("-inf") => -1.0 / 0.0
+    Number(x, ..) => x
+    _ => fail("bad cutoff")
+  }
+  let actual : String? = try
+    @difflib.get_close_matches("x", ["x"], n=int_field(case_, "n"), cutoff~)
+  catch {
+    ValueError(msg) => Some(msg)
+  } noraise {
+    _ => None
+  }
+  let expected = match field(case_, "error") {
+    String(msg) => Some(msg)
+    _ => None
+  }
+  assert_eq(actual, expected)
+}
+
+///|
 test "differential corpus from CPython difflib" {
   let counts : Map[String, Int] = Map([])
   for line in corpus.split("\n") {
@@ -253,6 +414,10 @@ test "differential corpus from CPython difflib" {
         "lines" => check_lines(case_)
         "html" => check_html(case_)
         "close" => check_close(case_)
+        "stateful" => check_stateful(case_)
+        "items" => check_items(case_)
+        "bytes" => check_bytes(case_)
+        "close_error" => check_close_error(case_)
         "line_junk" =>
           assert_eq(
             @difflib.is_line_junk(str_field(case_, "s")),
@@ -273,6 +438,10 @@ test "differential corpus from CPython difflib" {
       #|  "html": 80,
       #|  "close": 120,
       #|  "line_junk": 150,
+      #|  "stateful": 150,
+      #|  "items": 100,
+      #|  "bytes": 120,
+      #|  "close_error": 40,
       #|}
     ),
   )

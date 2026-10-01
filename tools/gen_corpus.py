@@ -218,6 +218,95 @@ def junk_case():
     return {'kind': 'line_junk', 's': s, 'result': d.IS_LINE_JUNK(s)}
 
 
+
+def stateful_case():
+    alpha = rng.choice(ALPHABETS)
+    junk = rng.choice(list(JUNK_CHARS))
+    autojunk = rng.random() < 0.7
+    big = rng.random() < 0.2
+    def rs():
+        return rand_str(alpha, 190, 240) if big else rand_str(alpha, 0, 25)
+    a0, b0 = rs(), rs()
+    s = d.SequenceMatcher(JUNK_CHARS[junk], a0, b0, autojunk=autojunk)
+    ops = []
+    for _ in range(rng.randint(3, 12)):
+        op = rng.choice(['set_seq1', 'set_seq2', 'set_seqs', 'ratio', 'quick_ratio',
+                         'real_quick_ratio', 'opcodes', 'blocks', 'grouped', 'bjunk',
+                         'bpopular', 'lm'])
+        if op == 'set_seq1':
+            x = rs(); s.set_seq1(x); ops.append([op, x, None])
+        elif op == 'set_seq2':
+            x = rs(); s.set_seq2(x); ops.append([op, x, None])
+        elif op == 'set_seqs':
+            x, y = rs(), rs(); s.set_seqs(x, y); ops.append([op, [x, y], None])
+        elif op in ('ratio', 'quick_ratio', 'real_quick_ratio'):
+            ops.append([op, None, getattr(s, op)()])
+        elif op == 'opcodes':
+            ops.append([op, None, opcodes(s.get_opcodes())])
+        elif op == 'blocks':
+            ops.append([op, None, [list(m) for m in s.get_matching_blocks()]])
+        elif op == 'grouped':
+            n = rng.randint(0, 3)
+            # Python mutates the cached opcodes; use a fresh matcher instead.
+            fresh = d.SequenceMatcher(JUNK_CHARS[junk], s.a, s.b, autojunk=autojunk)
+            ops.append([op, n, [opcodes(g) for g in fresh.get_grouped_opcodes(n)]])
+        elif op in ('bjunk', 'bpopular'):
+            ops.append([op, None, sorted(getattr(s, op))])
+        else:
+            alo = rng.randint(0, len(s.a)); ahi = rng.randint(alo, len(s.a))
+            blo = rng.randint(0, len(s.b)); bhi = rng.randint(blo, len(s.b))
+            ops.append([op, [alo, ahi, blo, bhi], list(s.find_longest_match(alo, ahi, blo, bhi))])
+    return {'kind': 'stateful', 'a': a0, 'b': b0, 'junk': junk, 'autojunk': autojunk,
+            'ops': ops}
+
+
+def items_matcher_case():
+    vocab = rng.choice([['x', 'y', 'z', '', '#', ' # ', 'foo'], ['a', 'b'], ['é', 'e', 'E']])
+    big = rng.random() < 0.2
+    la = rng.randint(180, 260) if big else rng.randint(0, 30)
+    a = [rng.choice(vocab) for _ in range(la)]
+    b = [rng.choice(vocab) for _ in range(rng.randint(max(0, la - 20), la + 20))]
+    junk = rng.choice(['none', 'is_line_junk'])
+    autojunk = rng.random() < 0.6
+    s = d.SequenceMatcher(d.IS_LINE_JUNK if junk == 'is_line_junk' else None, a, b, autojunk=autojunk)
+    return {'kind': 'items', 'a': a, 'b': b, 'junk': junk, 'autojunk': autojunk,
+            'opcodes': opcodes(s.get_opcodes()), 'ratio': s.ratio(),
+            'quick_ratio': s.quick_ratio(), 'bjunk': sorted(s.bjunk),
+            'bpopular': sorted(s.bpopular)}
+
+
+def bytes_case():
+    def rb(lo, hi):
+        return bytes(rng.choice([rng.randrange(256), ord('a'), ord('b'), 0x0a, 0x09])
+                     for _ in range(rng.randint(lo, hi)))
+    a = [rb(0, 8) for _ in range(rng.randint(0, 8))]
+    b = [x if rng.random() < 0.6 else rb(0, 8) for x in a] + [rb(0, 8) for _ in range(rng.randint(0, 3))]
+    fmt = rng.choice(['unified', 'context'])
+    args = dict(fromfile=rb(0, 5), tofile=rb(0, 5), fromfiledate=rb(0, 4),
+                tofiledate=rb(0, 4), n=rng.randint(0, 3), lineterm=rng.choice([b'\n', b'', b'\r\n']))
+    fn = d.unified_diff if fmt == 'unified' else d.context_diff
+    out = list(d.diff_bytes(fn, a, b, **args))
+    hexl = lambda xs: [x.hex() for x in xs]
+    return {'kind': 'bytes', 'format': fmt, 'a': hexl(a), 'b': hexl(b),
+            'fromfile': args['fromfile'].hex(), 'tofile': args['tofile'].hex(),
+            'fromfiledate': args['fromfiledate'].hex(), 'tofiledate': args['tofiledate'].hex(),
+            'n': args['n'], 'lineterm': args['lineterm'].hex(), 'result': hexl(out)}
+
+
+def close_error_case():
+    n = rng.choice([3, 0, -1, -7])
+    cutoff = rng.choice([0.6, -0.1, 1.1, 1e-05, -1e-05, 2.0, 1e20, -0.0, 100.0, 1.0000001,
+                         float('inf'), float('-inf'), float('nan')])
+    try:
+        d.get_close_matches('x', ['x'], n, cutoff)
+        err = None
+    except ValueError as e:
+        err = str(e)
+    return {'kind': 'close_error', 'n': n,
+            'cutoff': cutoff if cutoff == cutoff and abs(cutoff) != float('inf') else repr(cutoff),
+            'error': err}
+
+
 cases = []
 cases += [matcher_case() for _ in range(400)]
 cases += [lines_case() for _ in range(250)]
@@ -225,6 +314,10 @@ cases += [lines_case(big=True) for _ in range(6)]
 cases += [html_case() for _ in range(80)]
 cases += [close_case() for _ in range(120)]
 cases += [junk_case() for _ in range(150)]
+cases += [stateful_case() for _ in range(150)]
+cases += [items_matcher_case() for _ in range(100)]
+cases += [bytes_case() for _ in range(120)]
+cases += [close_error_case() for _ in range(40)]
 
 print('// Generated by tools/gen_corpus.py from the pinned CPython Lib/difflib.py.')
 print('// Do not edit by hand.')
