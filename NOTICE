@@ -1,0 +1,15 @@
+bobzhang/difflib
+Copyright 2026 Hongbo Zhang
+
+This module is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It is a port of the `difflib` module of CPython (Lib/difflib.py, commit
+763b6edb0ec959bdfb78f098b76829365de36ca5), including its HTML templates and
+test data derived from Lib/test/test_difflib.py and
+Lib/test/test_difflib_expect.html. Those portions are derived from software
+distributed under the Python Software Foundation License Version 2:
+
+  Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+
+The full CPython license, including the PSF License Agreement, is reproduced
+in LICENSE-PSF.

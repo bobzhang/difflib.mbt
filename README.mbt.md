@@ -210,3 +210,9 @@ python3 tools/gen_templates.py .repos/cpython/Lib > html_templates.mbt
 python3 tools/gen_charset.py > charset.mbt
 moon fmt                  # generated files are committed in formatted form
 ```
+
+## License
+
+Apache-2.0 (see `LICENSE`). This is a derivative of CPython's `difflib`.
+The derived portions retain the Python Software Foundation's copyright notice
+and license: see `NOTICE` and `LICENSE-PSF`.
