@@ -39,6 +39,14 @@ pub struct Differ {
 pub fn Differ::compare(Self, Array[String], Array[String]) -> Array[String]
 pub fn Differ::new(linejunk? : (String) -> Bool, charjunk? : (Char) -> Bool, autojunk? : Bool) -> Self
 
+pub struct HtmlDiff {
+  // private fields
+}
+pub fn HtmlDiff::make_file(Self, Array[String], Array[String], fromdesc? : String, todesc? : String, context? : Bool, numlines? : Int, charset? : String) -> String
+pub fn HtmlDiff::make_table(Self, Array[String], Array[String], fromdesc? : String, todesc? : String, context? : Bool, numlines? : Int) -> String
+pub fn HtmlDiff::new(tabsize? : Int, wrapcolumn? : Int, linejunk? : (String) -> Bool, charjunk? : (Char) -> Bool, autojunk? : Bool) -> Self
+pub fn HtmlDiff::reset_prefix_counter(value? : Int) -> Unit
+
 pub(all) struct Match {
   a : Int
   b : Int
