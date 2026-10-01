@@ -192,15 +192,18 @@ test "html diff" {
 Install the [MoonBit toolchain](https://www.moonbitlang.com/download), then run:
 
 ```bash
-moon test                 # all backends: add --target js|native|wasm
+moon test                 # one backend; add --target js, native, wasm or all
 ```
 
-The fixtures are generated from CPython sources, which go in `.repos/` (ignored
-by git):
+The fixtures are generated from the pinned CPython sources in `.repos/`
+(ignored by git). CI checks that they are up to date:
 
 ```bash
-git clone --depth 1 --filter=blob:none --sparse https://github.com/python/cpython .repos/cpython
-git -C .repos/cpython sparse-checkout set --no-cone /Lib/difflib.py /Lib/test/test_difflib.py /Lib/test/test_difflib_expect.html
+git init .repos/cpython && cd .repos/cpython
+git remote add origin https://github.com/python/cpython
+git sparse-checkout set --no-cone /Lib/difflib.py /Lib/test/test_difflib.py /Lib/test/test_difflib_expect.html
+git fetch --depth 1 --filter=blob:none origin 763b6edb0ec959bdfb78f098b76829365de36ca5
+git checkout FETCH_HEAD && cd ../..
 python3 tools/gen_corpus.py > corpus_fixtures_test.mbt
 python3 tools/gen_html_fixtures.py .repos/cpython/Lib tools > html_fixtures_test.mbt
 python3 tools/gen_templates.py .repos/cpython/Lib > html_templates.mbt

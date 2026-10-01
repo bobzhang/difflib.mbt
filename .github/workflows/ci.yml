@@ -1,0 +1,87 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install MoonBit
+        uses: moonbit-community/setup-moonbit@04293a8a813bfd4b6c2fce22701b52ae1050d100
+        with:
+          version: latest
+
+      - name: moon version
+        run: moon version --all
+
+      - name: moon update
+        run: moon update
+
+      - name: moon check
+        run: moon check --target all --deny-warn
+
+      - name: format and interface are up to date
+        shell: bash
+        run: |
+          moon fmt
+          moon info
+          git diff --exit-code
+
+      - name: moon test (wasm-gc)
+        run: moon test --target wasm-gc
+
+      - name: moon test (wasm)
+        run: moon test --target wasm
+
+      - name: moon test (js)
+        run: moon test --target js
+
+      - name: moon test (native)
+        if: runner.os != 'Windows'
+        run: moon test --target native
+
+  fixtures:
+    # The generated fixtures must match what the pinned CPython source produces.
+    name: fixtures match pinned CPython
+    runs-on: ubuntu-latest
+    env:
+      CPYTHON_COMMIT: 763b6edb0ec959bdfb78f098b76829365de36ca5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: install MoonBit
+        uses: moonbit-community/setup-moonbit@04293a8a813bfd4b6c2fce22701b52ae1050d100
+        with:
+          version: latest
+
+      - name: fetch pinned CPython sources
+        run: |
+          git init -q .repos/cpython
+          cd .repos/cpython
+          git remote add origin https://github.com/python/cpython
+          git sparse-checkout set --no-cone /Lib/difflib.py /Lib/test/test_difflib.py /Lib/test/test_difflib_expect.html
+          git fetch -q --depth 1 --filter=blob:none origin "$CPYTHON_COMMIT"
+          git checkout -q FETCH_HEAD
+
+      - name: regenerate fixtures
+        run: |
+          python3 tools/gen_corpus.py > corpus_fixtures_test.mbt
+          python3 tools/gen_html_fixtures.py .repos/cpython/Lib tools > html_fixtures_test.mbt
+          python3 tools/gen_templates.py .repos/cpython/Lib > html_templates.mbt
+          moon fmt
+          git diff --exit-code
