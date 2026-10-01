@@ -194,9 +194,14 @@ fn check_html(case_ : Json) -> Unit raise {
     j => Some(int_of(j))
   }
   let charjunk = char_junk(str_field(case_, "charjunk")).unwrap_or(_ => false)
+  let linejunk : ((String) -> Bool)? = match str_field(case_, "linejunk") {
+    "is_line_junk" => Some(@difflib.is_line_junk)
+    _ => None
+  }
   let h = @difflib.HtmlDiff::new(
     tabsize=int_field(case_, "tabsize"),
     wrapcolumn?,
+    linejunk?,
     charjunk~,
     autojunk=bool_field(case_, "autojunk"),
   )
@@ -402,6 +407,60 @@ fn check_close_error(case_ : Json) -> Unit raise {
 }
 
 ///|
+/// Builds a string from code points, allowing lone surrogates (which
+/// MoonBit's JSON parser rejects in escapes).
+fn from_codes(j : Json) -> String {
+  guard j is Array(codes) else { abort("not a code point list") }
+  let sb = StringBuilder()
+  for c in codes {
+    sb.write_char(int_of(c).unsafe_to_char())
+  }
+  sb.to_string()
+}
+
+///|
+fn codes_list(j : Json) -> Array[String] {
+  guard j is Array(items) else { abort("not a list") }
+  items.map(from_codes)
+}
+
+///|
+fn check_surrogate(case_ : Json) -> Unit raise {
+  let sa = from_codes(field(case_, "sa"))
+  let sb = from_codes(field(case_, "sb"))
+  let m = @difflib.SequenceMatcher::new(a=sa.to_array(), b=sb.to_array())
+  assert_eq(show_opcodes(m.get_opcodes()), opcodes_of(field(case_, "opcodes")))
+  assert_eq(m.ratio(), num_field(case_, "ratio"))
+  let a = codes_list(field(case_, "a"))
+  let b = codes_list(field(case_, "b"))
+  assert_eq(@difflib.ndiff(a, b), codes_list(field(case_, "ndiff")))
+  assert_eq(
+    @difflib.unified_diff(a, b, n=1),
+    codes_list(field(case_, "unified")),
+  )
+  guard field(case_, "is_line_junk") is Array(junk) else { fail("bad junk") }
+  assert_eq(a.map(@difflib.is_line_junk).map(Json::boolean), junk)
+  let wrapcolumn = match field(case_, "wrap") {
+    Null => None
+    j => Some(int_of(j))
+  }
+  @difflib.HtmlDiff::reset_prefix_counter()
+  assert_eq(
+    @difflib.HtmlDiff::new(wrapcolumn?).make_table(a, b),
+    from_codes(field(case_, "table")),
+  )
+  @difflib.HtmlDiff::reset_prefix_counter()
+  assert_eq(
+    @difflib.HtmlDiff::new().make_file(
+      a,
+      b,
+      charset=str_field(case_, "charset"),
+    ),
+    from_codes(field(case_, "file")),
+  )
+}
+
+///|
 test "differential corpus from CPython difflib" {
   let counts : Map[String, Int] = Map([])
   for line in corpus.split("\n") {
@@ -418,6 +477,7 @@ test "differential corpus from CPython difflib" {
         "items" => check_items(case_)
         "bytes" => check_bytes(case_)
         "close_error" => check_close_error(case_)
+        "surrogate" => check_surrogate(case_)
         "line_junk" =>
           assert_eq(
             @difflib.is_line_junk(str_field(case_, "s")),
@@ -442,6 +502,7 @@ test "differential corpus from CPython difflib" {
       #|  "items": 100,
       #|  "bytes": 120,
       #|  "close_error": 40,
+      #|  "surrogate": 40,
       #|}
     ),
   )
