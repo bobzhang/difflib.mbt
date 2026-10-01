@@ -40,6 +40,8 @@ priv struct SideLine {
 ///|
 /// A row produced by [mdiff]: either a from/to pair with a "has changes"
 /// flag, or a context separator (Python's `(None, None, None)`).
+/// `Eq` and `Debug` are only used by the whitebox tests.
+#warnings("-unused_value")
 priv enum MdiffRow {
   Row(SideLine, SideLine, Bool)
   Separator
