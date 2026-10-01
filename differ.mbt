@@ -151,8 +151,10 @@ fn plain_replace(
 /// *similar* lines; the best-matching pair (if any) is used as a synch point,
 /// and intraline difference marking is done on the similar pair.
 ///
-/// Like Python's generator, the output is produced lazily: each pull runs at
-/// most one step of the loop over `j`.
+/// Like Python's generator, the output is produced lazily: the loop over `j`
+/// advances only as far as needed to produce the next line, and a synch
+/// pair's intraline markup is computed after the lines before it have been
+/// consumed.
 fn Differ::fancy_replace(
   self : Differ,
   a : Array[String],
@@ -170,28 +172,26 @@ fn Differ::fancy_replace(
   )
   // Character arrays for each line, computed on first use and kept so that
   // `set_seq1` / `set_seq2` can reuse cached state for identical sequences.
-  let a_chars : Array[Array[Char]?] = Array::make(ahi - alo, None)
-  let b_chars : Array[Array[Char]?] = Array::make(bhi - blo, None)
-  let a_at = (i : Int) => {
-    match a_chars[i - alo] {
-      Some(cs) => cs
-      None => {
-        let cs = a[i].to_array()
-        a_chars[i - alo] = Some(cs)
+  // An entry is recomputed if the input line was replaced in the meantime.
+  let a_cache : Map[Int, (String, Array[Char])] = Map([])
+  let b_cache : Map[Int, (String, Array[Char])] = Map([])
+  let chars_at = (
+    cache : Map[Int, (String, Array[Char])],
+    x : Array[String],
+    i : Int,
+  ) => {
+    let line = x[i]
+    match cache.get(i) {
+      Some((src, cs)) if physical_equal(src, line) => cs
+      _ => {
+        let cs = line.to_array()
+        cache[i] = (line, cs)
         cs
       }
     }
   }
-  let b_at = (j : Int) => {
-    match b_chars[j - blo] {
-      Some(cs) => cs
-      None => {
-        let cs = b[j].to_array()
-        b_chars[j - blo] = Some(cs)
-        cs
-      }
-    }
-  }
+  let a_at = (i : Int) => chars_at(a_cache, a, i)
+  let b_at = (j : Int) => chars_at(b_cache, b, j)
   let window = 10
   // smallest indices not yet resolved
   let mut dump_i = alo
@@ -247,34 +247,40 @@ fn Differ::fancy_replace(
     let before = fancy_helper(a, dump_i, best_i, b, dump_j, best_j)
     dump_i = best_i + 1
     dump_j = best_j + 1
-    // do intraline marking on the synch pair
-    let aelt = a[best_i]
-    let belt = b[best_j]
-    if aelt == belt {
-      // the synch pair is identical
-      return Some(before + [|"  " + aelt|])
-    }
-    // pump out a '-', '?', '+', '?' quad for the synched lines
-    let atags = StringBuilder()
-    let btags = StringBuilder()
-    cruncher.set_seqs(a_at(best_i), b_at(best_j))
-    for op in cruncher.get_opcodes() {
-      let la = op.i2 - op.i1
-      let lb = op.j2 - op.j1
-      match op.tag {
-        Replace => {
-          repeat_char(atags, '^', la)
-          repeat_char(btags, '^', lb)
+    // do intraline marking on the synch pair, once the lines before it
+    // have been consumed (Python reads `a[best_i]` only at that point)
+    Some(
+      before +
+      deferred(() => {
+        let aelt = a[best_i]
+        let belt = b[best_j]
+        if aelt == belt {
+          // the synch pair is identical
+          return [|"  " + aelt|]
         }
-        Delete => repeat_char(atags, '-', la)
-        Insert => repeat_char(btags, '+', lb)
-        Equal => {
-          repeat_char(atags, ' ', la)
-          repeat_char(btags, ' ', lb)
+        // pump out a '-', '?', '+', '?' quad for the synched lines
+        let atags = StringBuilder()
+        let btags = StringBuilder()
+        cruncher.set_seqs(a_at(best_i), b_at(best_j))
+        for op in cruncher.get_opcodes() {
+          let la = op.i2 - op.i1
+          let lb = op.j2 - op.j1
+          match op.tag {
+            Replace => {
+              repeat_char(atags, '^', la)
+              repeat_char(btags, '^', lb)
+            }
+            Delete => repeat_char(atags, '-', la)
+            Insert => repeat_char(btags, '+', lb)
+            Equal => {
+              repeat_char(atags, ' ', la)
+              repeat_char(btags, ' ', lb)
+            }
+          }
         }
-      }
-    }
-    Some(before + qformat(aelt, belt, atags.to_string(), btags.to_string()))
+        qformat(aelt, belt, atags.to_string(), btags.to_string())
+      }),
+    )
   }
   Iter::new(step).flatten()
 }

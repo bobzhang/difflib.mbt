@@ -518,14 +518,14 @@ pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(
   if n < 0 {
     abort("get_grouped_opcodes: n must be >= 0, got \{n}")
   }
-  deferred(() => self.grouped_opcodes(n).iter())
+  deferred(() => self.grouped_opcodes(n))
 }
 
 ///|
 fn[T : Hash + Eq] SequenceMatcher::grouped_opcodes(
   self : SequenceMatcher[T],
   n : Int,
-) -> Array[Array[Opcode]] {
+) -> Iter[Array[Opcode]] {
   // Any n >= max(len(a), len(b), 1) gives the same groups, so clamp it;
   // the additions below saturate, so even huge inputs cannot overflow.
   let n = @cmp.minimum(
@@ -557,33 +557,49 @@ fn[T : Hash + Eq] SequenceMatcher::grouped_opcodes(
     }
   }
   let nn = add_sat(n, n)
-  let groups : Array[Array[Opcode]] = []
+  // Each pull scans opcodes until the next group is complete, like Python's
+  // generator.
+  let mut index = 0
   let mut group : Array[Opcode] = []
-  for code in codes {
-    let { tag, i1, i2, j1, j2, } = code
-    let mut i1 = i1
-    let mut j1 = j1
-    // End the current group and start a new one whenever
-    // there is a large range with no changes.
-    if tag is Equal && i2 - i1 > nn {
-      group.push({
-        tag,
-        i1,
-        i2: @cmp.minimum(i2, add_sat(i1, n)),
-        j1,
-        j2: @cmp.minimum(j2, add_sat(j1, n)),
-      })
-      groups.push(group)
-      group = []
-      i1 = @cmp.maximum(i1, i2 - n)
-      j1 = @cmp.maximum(j1, j2 - n)
+  let mut finished = false
+  Iter::new(() => {
+    while index < codes.length() {
+      let { tag, i1, i2, j1, j2, } = codes[index]
+      index += 1
+      // End the current group and start a new one whenever
+      // there is a large range with no changes.
+      if tag is Equal && i2 - i1 > nn {
+        let done = group
+        done.push({
+          tag,
+          i1,
+          i2: @cmp.minimum(i2, add_sat(i1, n)),
+          j1,
+          j2: @cmp.minimum(j2, add_sat(j1, n)),
+        })
+        group = [
+          {
+            tag,
+            i1: @cmp.maximum(i1, i2 - n),
+            i2,
+            j1: @cmp.maximum(j1, j2 - n),
+            j2,
+          },
+        ]
+        return Some(done)
+      }
+      group.push({ tag, i1, i2, j1, j2, })
     }
-    group.push({ tag, i1, i2, j1, j2, })
-  }
-  if !group.is_empty() && !(group.length() == 1 && group[0].tag is Equal) {
-    groups.push(group)
-  }
-  groups
+    if finished {
+      return None
+    }
+    finished = true
+    if !group.is_empty() && !(group.length() == 1 && group[0].tag is Equal) {
+      Some(group)
+    } else {
+      None
+    }
+  })
 }
 
 ///|

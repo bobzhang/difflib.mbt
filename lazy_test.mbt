@@ -74,3 +74,56 @@ test "restore streams from an ndiff delta" {
   assert_eq(@difflib.restore(@difflib.ndiff(a, b), 1).to_array(), a)
   assert_eq(@difflib.restore(@difflib.ndiff(a, b), 2).to_array(), b)
 }
+
+///|
+test "input lines replaced mid-iteration are seen like in Python" {
+  // Expected outputs come from CPython: advance the generator, replace an
+  // input line, then consume the rest.
+  let a = ["zzzz\n", "abcdX\n"]
+  let b = ["abcdY\n"]
+  let delta = @difflib.Differ::new().compare(a, b)
+  let first = delta.next()
+  a[1] = "xxxxx\n"
+  debug_inspect(
+    [first.unwrap()] + delta.to_array(),
+    content=(
+      #|["- zzzz\n", "- xxxxx\n", "? ^^^^^\n", "+ abcdY\n", "? ^^^^^\n"]
+    ),
+  )
+  let a = ["aaaa\n", "bbbb\n", "cccc\n"]
+  let b = ["aaab\n", "bbbc\n", "cccd\n"]
+  let delta = @difflib.ndiff(a, b)
+  let first = delta.take(4).to_array()
+  a[1] = "BBBB\n"
+  b[1] = "bbbC\n"
+  debug_inspect(
+    first + delta.to_array(),
+    content=(
+      #|[
+      #|  "- aaaa\n",
+      #|  "?    ^\n",
+      #|  "+ aaab\n",
+      #|  "?    ^\n",
+      #|  "- BBBB\n",
+      #|  "+ bbbC\n",
+      #|  "- cccc\n",
+      #|  "?    ^\n",
+      #|  "+ cccd\n",
+      #|  "?    ^\n",
+      #|]
+    ),
+  )
+}
+
+///|
+test "get_grouped_opcodes yields one group per pull" {
+  let a = Array::makei(200, i => i)
+  let b = a.copy()
+  for k in 0..<10 {
+    b[k * 20] = -1
+  }
+  let groups = @difflib.SequenceMatcher::new(a~, b~).get_grouped_opcodes()
+  let first = groups.next().unwrap()
+  assert_eq(first[0], { tag: Replace, i1: 0, i2: 1, j1: 0, j2: 1, })
+  assert_eq(groups.count(), 9)
+}
