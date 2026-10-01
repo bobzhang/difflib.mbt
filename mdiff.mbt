@@ -318,7 +318,7 @@ fn mdiff(
   // storage of lines until we know for sure that they are to be yielded.
   // Any context >= the number of line pairs gives the same output; clamping
   // avoids overflow and a huge buffer for very large context sizes.
-  let context = @cmp.minimum(context, pairs.length()) + 1
+  let context = add_sat(@cmp.minimum(context, pairs.length()), 1)
   let mut pos = 0
   for ;; {
     // Store lines up until we find a difference, note use of a

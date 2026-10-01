@@ -179,8 +179,8 @@ test "html diff" {
   reproducible output in tests.
 - Negative context sizes (`n` in `get_grouped_opcodes`, `unified_diff`,
   `context_diff`; `numlines` in `HtmlDiff`) and a negative `wrapcolumn`
-  panic. Python returns meaningless hunks or crashes with
-  `IndexError`/`ZeroDivisionError`/`RecursionError` for these.
+  panic. Depending on the input, Python can return meaningless hunks or
+  raise `IndexError`, `ZeroDivisionError` or `RecursionError` for these.
 - MoonBit strings are UTF-16, so a high surrogate directly followed by a low
   surrogate is the astral character they encode. Python can keep them as two
   separate code points; lone surrogates otherwise behave as in Python.
@@ -207,5 +207,6 @@ git checkout FETCH_HEAD && cd ../..
 python3 tools/gen_corpus.py > corpus_fixtures_test.mbt
 python3 tools/gen_html_fixtures.py .repos/cpython/Lib tools > html_fixtures_test.mbt
 python3 tools/gen_templates.py .repos/cpython/Lib > html_templates.mbt
+python3 tools/gen_charset.py > charset.mbt
 moon fmt                  # generated files are committed in formatted form
 ```

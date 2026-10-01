@@ -489,8 +489,8 @@ pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(
   if n < 0 {
     abort("get_grouped_opcodes: n must be >= 0, got \{n}")
   }
-  // Any n >= max(len(a), len(b), 1) gives the same groups; clamping keeps
-  // `n + n` and `i1 + n` from overflowing for huge context sizes.
+  // Any n >= max(len(a), len(b), 1) gives the same groups, so clamp it;
+  // the additions below saturate, so even huge inputs cannot overflow.
   let n = @cmp.minimum(
     n,
     @cmp.maximum(@cmp.maximum(self.a.length(), self.b.length()), 1),
@@ -514,12 +514,12 @@ pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(
     codes[last] = {
       tag: Equal,
       i1,
-      i2: @cmp.minimum(i2, i1 + n),
+      i2: @cmp.minimum(i2, add_sat(i1, n)),
       j1,
-      j2: @cmp.minimum(j2, j1 + n),
+      j2: @cmp.minimum(j2, add_sat(j1, n)),
     }
   }
-  let nn = n + n
+  let nn = add_sat(n, n)
   let groups : Array[Array[Opcode]] = []
   let mut group : Array[Opcode] = []
   for code in codes {
@@ -532,9 +532,9 @@ pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(
       group.push({
         tag,
         i1,
-        i2: @cmp.minimum(i2, i1 + n),
+        i2: @cmp.minimum(i2, add_sat(i1, n)),
         j1,
-        j2: @cmp.minimum(j2, j1 + n),
+        j2: @cmp.minimum(j2, add_sat(j1, n)),
       })
       groups.push(group)
       group = []
@@ -547,6 +547,17 @@ pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(
     groups.push(group)
   }
   groups
+}
+
+///|
+/// Non-negative addition that saturates at the maximum `Int`.
+fn add_sat(x : Int, y : Int) -> Int {
+  let sum = x.to_int64() + y.to_int64()
+  if sum > 2147483647L {
+    2147483647
+  } else {
+    sum.to_int()
+  }
 }
 
 ///|

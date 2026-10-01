@@ -213,3 +213,15 @@ test "huge context sizes do not overflow" {
     mdiff(["a", "x", "y"], ["b", "x", "y"], context=3),
   )
 }
+
+///|
+test "dotted charset names resolve like Python's codec lookup" {
+  // "latin.1" and "utf.8" are not codecs in Python (LookupError), so they
+  // fall back to "assume all of Unicode" here.
+  assert_eq(resolve_codec("latin.1"), None)
+  assert_eq(resolve_codec("utf.8"), None)
+  assert_eq(resolve_codec("iso8859.1"), Some("latin_1"))
+  assert_eq(resolve_codec("iso_646.irv:1991"), Some("ascii"))
+  assert_eq(resolve_codec("ANSI_X3.4-1968"), Some("ascii"))
+  assert_eq(xml_charref_replace("😀", "latin.1"), "😀")
+}
