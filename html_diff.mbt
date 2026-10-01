@@ -42,7 +42,8 @@ pub struct HtmlDiff {
 ///
 /// - `tabsize`: tab stop spacing (default 8).
 /// - `wrapcolumn`: column where lines are broken and wrapped; by default
-///   lines are not wrapped.
+///   (or when 0) lines are not wrapped. Panics if negative (Python recurses
+///   without bound).
 /// - `linejunk`, `charjunk`, `autojunk`: passed to [ndiff] (`charjunk`
 ///   defaults to [is_character_junk]).
 pub fn HtmlDiff::new(
@@ -52,6 +53,9 @@ pub fn HtmlDiff::new(
   charjunk? : (Char) -> Bool = is_character_junk,
   autojunk? : Bool = true,
 ) -> HtmlDiff {
+  if wrapcolumn is Some(w) && w < 0 {
+    abort("HtmlDiff: wrapcolumn must be >= 0, got \{w}")
+  }
   { tabsize, wrapcolumn, linejunk, charjunk: Some(charjunk), autojunk, }
 }
 
@@ -62,11 +66,12 @@ pub fn HtmlDiff::new(
 /// - `fromdesc`, `todesc`: column header strings.
 /// - `context`: show contextual differences (default `false`: full).
 /// - `numlines`: the number of context lines when `context` is set; otherwise
-///   how many lines before a change the "next" anchors are placed.
+///   how many lines before a change the "next" anchors are placed. Panics if
+///   negative.
 /// - `charset`: the document charset. Characters that the charset cannot
-///   encode are replaced by XML character references (`&#NNN;`). `ascii`
-///   and `latin-1` family names are recognised; any other name is assumed to
-///   cover all of Unicode.
+///   encode are replaced by XML character references (`&#NNN;`). The ascii,
+///   latin-1 and UTF-8/16/32 codecs and their Python aliases are recognised;
+///   any other name is assumed to cover all of Unicode.
 pub fn HtmlDiff::make_file(
   self : HtmlDiff,
   fromlines : Array[String],
@@ -247,6 +252,10 @@ pub fn HtmlDiff::make_table(
   context? : Bool = false,
   numlines? : Int = 5,
 ) -> String {
+  if numlines < 0 {
+    // Python fails with IndexError / ZeroDivisionError here.
+    abort("HtmlDiff: numlines must be >= 0, got \{numlines}")
+  }
   // make unique anchor prefixes so that multiple tables may exist
   // on the same page without conflict.
   let fromprefix = "from\{html_default_prefix.val}_"

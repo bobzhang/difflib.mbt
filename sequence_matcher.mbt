@@ -479,10 +479,16 @@ pub fn[T : Hash + Eq] SequenceMatcher::get_opcodes(
 /// Returns groups of opcodes with up to `n` lines of context each.
 ///
 /// Unlike Python, the cached result of `get_opcodes()` is not mutated.
+///
+/// # Panics
+/// Panics if `n` is negative (Python returns meaningless ranges).
 pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(
   self : SequenceMatcher[T],
   n? : Int = 3,
 ) -> Array[Array[Opcode]] {
+  if n < 0 {
+    abort("get_grouped_opcodes: n must be >= 0, got \{n}")
+  }
   // Any n >= max(len(a), len(b), 1) gives the same groups; clamping keeps
   // `n + n` and `i1 + n` from overflowing for huge context sizes.
   let n = @cmp.minimum(

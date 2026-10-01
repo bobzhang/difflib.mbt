@@ -726,3 +726,39 @@ test "set_seq1 / set_seq2 doctests" {
     content="{ a: 0, b: 0, size: 0 }",
   )
 }
+
+///|
+test "panic get_grouped_opcodes rejects negative n" {
+  ignore(
+    @difflib.SequenceMatcher::new(a=['a'], b=['b']).get_grouped_opcodes(n=-1),
+  )
+}
+
+///|
+test "panic unified_diff rejects negative n" {
+  ignore(@difflib.unified_diff(["a"], ["b"], n=-2))
+}
+
+///|
+test "panic context_diff rejects negative n" {
+  ignore(@difflib.context_diff(["a"], ["b"], n=-2))
+}
+
+///|
+test "panic HtmlDiff rejects negative wrapcolumn" {
+  ignore(@difflib.HtmlDiff::new(wrapcolumn=-1))
+}
+
+///|
+test "panic HtmlDiff rejects negative numlines" {
+  ignore(@difflib.HtmlDiff::new().make_table(["a"], ["b"], numlines=-1))
+}
+
+///|
+test "HtmlDiff zero wrapcolumn disables wrapping" {
+  @difflib.HtmlDiff::reset_prefix_counter()
+  let wrapped = @difflib.HtmlDiff::new(wrapcolumn=0).make_table(["abc"], ["abd"])
+  @difflib.HtmlDiff::reset_prefix_counter()
+  let plain = @difflib.HtmlDiff::new().make_table(["abc"], ["abd"])
+  assert_eq(wrapped, plain)
+}

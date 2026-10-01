@@ -48,7 +48,8 @@ let no_color_theme : DiffTheme = {
 ///|
 /// Compares two sequences of lines and returns the delta as a unified diff.
 ///
-/// - `n` (default 3): the number of context lines.
+/// - `n` (default 3): the number of context lines; must not be negative
+///   (it panics otherwise).
 /// - `lineterm` (default `"\n"`): appended to the control lines (`---`,
 ///   `+++`, `@@`). Set it to `""` for inputs without trailing newlines.
 /// - `fromfile`, `tofile`, `fromfiledate`, `tofiledate`: header fields.
