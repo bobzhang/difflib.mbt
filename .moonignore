@@ -1,0 +1,13 @@
+# Files left out of the published mooncakes archive. This file overrides
+# .gitignore for packaging, so repeat its entries.
+.repos/
+_build/
+target/
+.mooncakes/
+node_modules/
+.github/
+# The randomized differential corpus (~3 MB) and its Python generators are
+# only needed for this repository's own tests.
+corpus_fixtures_test.mbt
+corpus_test.mbt
+tools/
