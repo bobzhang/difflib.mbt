@@ -66,6 +66,10 @@ pub fn Differ::new(
 /// Each line should end with a newline; the delta lines then also end with
 /// newlines.
 ///
+/// Like Python's generator, the delta is produced lazily: no work is done
+/// until the first line is requested, and the returned iterator can be
+/// consumed only once.
+///
 /// # Example
 /// ```mbt check
 /// test {
@@ -93,58 +97,52 @@ pub fn Differ::compare(
   self : Differ,
   a : Array[String],
   b : Array[String],
-) -> Array[String] {
-  let out : Array[String] = []
-  let cruncher = SequenceMatcher::new(
-    isjunk?=self.linejunk,
-    a~,
-    b~,
-    autojunk=self.autojunk,
-  )
-  for op in cruncher.get_opcodes() {
-    let { tag, i1: alo, i2: ahi, j1: blo, j2: bhi, } = op
-    match tag {
-      Replace => self.fancy_replace(out, a, alo, ahi, b, blo, bhi)
-      Delete => dump(out, "-", a, alo, ahi)
-      Insert => dump(out, "+", b, blo, bhi)
-      Equal => dump(out, " ", a, alo, ahi)
-    }
-  }
-  out
+) -> Iter[String] {
+  deferred(() => {
+    let cruncher = SequenceMatcher::new(
+      isjunk?=self.linejunk,
+      a~,
+      b~,
+      autojunk=self.autojunk,
+    )
+    cruncher
+    .get_opcodes()
+    .iter()
+    .flat_map(op => {
+      let { tag, i1: alo, i2: ahi, j1: blo, j2: bhi, } = op
+      match tag {
+        Replace => self.fancy_replace(a, alo, ahi, b, blo, bhi)
+        Delete => dump("-", a, alo, ahi)
+        Insert => dump("+", b, blo, bhi)
+        Equal => dump(" ", a, alo, ahi)
+      }
+    })
+  })
 }
 
 ///|
-/// Emits the comparison results for a same-tagged range.
-fn dump(
-  out : Array[String],
-  tag : String,
-  x : Array[String],
-  lo : Int,
-  hi : Int,
-) -> Unit {
-  for i in lo..<hi {
-    out.push("\{tag} \{x[i]}")
-  }
+/// Generates the comparison results for a same-tagged range.
+fn dump(tag : String, x : Array[String], lo : Int, hi : Int) -> Iter[String] {
+  [|
+    for line in x[lo:hi] => "\{tag} \{line}"
+  |]
 }
 
 ///|
 fn plain_replace(
-  out : Array[String],
   a : Array[String],
   alo : Int,
   ahi : Int,
   b : Array[String],
   blo : Int,
   bhi : Int,
-) -> Unit {
+) -> Iter[String] {
   // dump the shorter block first -- reduces the burden on short-term
   // memory if the blocks are of very different sizes
   if bhi - blo < ahi - alo {
-    dump(out, "+", b, blo, bhi)
-    dump(out, "-", a, alo, ahi)
+    dump("+", b, blo, bhi) + dump("-", a, alo, ahi)
   } else {
-    dump(out, "-", a, alo, ahi)
-    dump(out, "+", b, blo, bhi)
+    dump("-", a, alo, ahi) + dump("+", b, blo, bhi)
   }
 }
 
@@ -152,46 +150,81 @@ fn plain_replace(
 /// When replacing one block of lines with another, searches the blocks for
 /// *similar* lines; the best-matching pair (if any) is used as a synch point,
 /// and intraline difference marking is done on the similar pair.
+///
+/// Like Python's generator, the output is produced lazily: each pull runs at
+/// most one step of the loop over `j`.
 fn Differ::fancy_replace(
   self : Differ,
-  out : Array[String],
   a : Array[String],
   alo : Int,
   ahi : Int,
   b : Array[String],
   blo : Int,
   bhi : Int,
-) -> Unit {
+) -> Iter[String] {
   // Don't synch up unless the lines have a similarity score above cutoff.
   let cutoff = 0.74999
   let cruncher : SequenceMatcher[Char] = SequenceMatcher::new(
     isjunk?=self.charjunk,
     autojunk=self.autojunk,
   )
-  // Character arrays for each line, computed once so that `set_seq1` /
-  // `set_seq2` can reuse cached state for identical sequences.
-  let a_chars = Array::makei(ahi - alo, k => a[alo + k].to_array())
-  let b_chars = Array::makei(bhi - blo, k => b[blo + k].to_array())
+  // Character arrays for each line, computed on first use and kept so that
+  // `set_seq1` / `set_seq2` can reuse cached state for identical sequences.
+  let a_chars : Array[Array[Char]?] = Array::make(ahi - alo, None)
+  let b_chars : Array[Array[Char]?] = Array::make(bhi - blo, None)
+  let a_at = (i : Int) => {
+    match a_chars[i - alo] {
+      Some(cs) => cs
+      None => {
+        let cs = a[i].to_array()
+        a_chars[i - alo] = Some(cs)
+        cs
+      }
+    }
+  }
+  let b_at = (j : Int) => {
+    match b_chars[j - blo] {
+      Some(cs) => cs
+      None => {
+        let cs = b[j].to_array()
+        b_chars[j - blo] = Some(cs)
+        cs
+      }
+    }
+  }
   let window = 10
-  let mut best_i = -1
-  let mut best_j = -1
   // smallest indices not yet resolved
   let mut dump_i = alo
   let mut dump_j = blo
-  for j in blo..<bhi {
-    cruncher.set_seq2(b_chars[j - blo])
-    // Search the corresponding i's within WINDOW for the highest
-    // ratio greater than `cutoff`.
-    let aequiv = alo + (j - blo)
-    let range_lo = @cmp.maximum(aequiv - window, dump_i)
-    let range_hi = @cmp.minimum(aequiv + window + 1, ahi)
+  let mut j = blo
+  let mut finished = false
+  // Each step handles one `j` and returns the lines it produces; the final
+  // step pumps out the straight replace after the last synch pair.
+  let step = () => {
+    if finished {
+      return None
+    }
+    let final_step = () => {
+      finished = true
+      // pump out straight replace from after the last synch pair
+      Some(fancy_helper(a, dump_i, ahi, b, dump_j, bhi))
+    }
+    if j >= bhi {
+      return final_step()
+    }
+    cruncher.set_seq2(b_at(j))
+    let range_lo = @cmp.maximum(alo + (j - blo) - window, dump_i)
+    let range_hi = @cmp.minimum(alo + (j - blo) + window + 1, ahi)
     if range_lo >= range_hi {
       // likely exit if `a` is shorter than `b`
-      break
+      return final_step()
     }
+    // Search the corresponding i's within WINDOW for the highest
+    // ratio greater than `cutoff`.
+    let mut best_i = -1
     let mut best_ratio = cutoff
     for i in range_lo..<range_hi {
-      cruncher.set_seq1(a_chars[i - alo])
+      cruncher.set_seq1(a_at(i))
       // Ordering by cheapest to most expensive ratio is very
       // valuable, most often getting out early.
       if cruncher.real_quick_ratio() <= best_ratio ||
@@ -201,52 +234,49 @@ fn Differ::fancy_replace(
       let ratio = cruncher.ratio()
       if ratio > best_ratio {
         best_i = i
-        best_j = j
         best_ratio = ratio
       }
     }
+    let best_j = j
+    j += 1
     if best_i < 0 {
       // found nothing to synch on yet - move to next j
-      continue
+      return Some(Iter::empty())
     }
     // pump out straight replace from before this synch pair
-    fancy_helper(out, a, dump_i, best_i, b, dump_j, best_j)
+    let before = fancy_helper(a, dump_i, best_i, b, dump_j, best_j)
+    dump_i = best_i + 1
+    dump_j = best_j + 1
     // do intraline marking on the synch pair
     let aelt = a[best_i]
     let belt = b[best_j]
-    if aelt != belt {
-      // pump out a '-', '?', '+', '?' quad for the synched lines
-      let atags = StringBuilder()
-      let btags = StringBuilder()
-      cruncher.set_seqs(a_chars[best_i - alo], b_chars[best_j - blo])
-      for op in cruncher.get_opcodes() {
-        let la = op.i2 - op.i1
-        let lb = op.j2 - op.j1
-        match op.tag {
-          Replace => {
-            repeat_char(atags, '^', la)
-            repeat_char(btags, '^', lb)
-          }
-          Delete => repeat_char(atags, '-', la)
-          Insert => repeat_char(btags, '+', lb)
-          Equal => {
-            repeat_char(atags, ' ', la)
-            repeat_char(btags, ' ', lb)
-          }
+    if aelt == belt {
+      // the synch pair is identical
+      return Some(before + [|"  " + aelt|])
+    }
+    // pump out a '-', '?', '+', '?' quad for the synched lines
+    let atags = StringBuilder()
+    let btags = StringBuilder()
+    cruncher.set_seqs(a_at(best_i), b_at(best_j))
+    for op in cruncher.get_opcodes() {
+      let la = op.i2 - op.i1
+      let lb = op.j2 - op.j1
+      match op.tag {
+        Replace => {
+          repeat_char(atags, '^', la)
+          repeat_char(btags, '^', lb)
+        }
+        Delete => repeat_char(atags, '-', la)
+        Insert => repeat_char(btags, '+', lb)
+        Equal => {
+          repeat_char(atags, ' ', la)
+          repeat_char(btags, ' ', lb)
         }
       }
-      qformat(out, aelt, belt, atags.to_string(), btags.to_string())
-    } else {
-      // the synch pair is identical
-      out.push("  " + aelt)
     }
-    dump_i = best_i + 1
-    dump_j = best_j + 1
-    best_i = -1
-    best_j = -1
+    Some(before + qformat(aelt, belt, atags.to_string(), btags.to_string()))
   }
-  // pump out straight replace from after the last synch pair
-  fancy_helper(out, a, dump_i, ahi, b, dump_j, bhi)
+  Iter::new(step).flatten()
 }
 
 ///|
@@ -258,22 +288,23 @@ fn repeat_char(buf : StringBuilder, c : Char, n : Int) -> Unit {
 
 ///|
 fn fancy_helper(
-  out : Array[String],
   a : Array[String],
   alo : Int,
   ahi : Int,
   b : Array[String],
   blo : Int,
   bhi : Int,
-) -> Unit {
+) -> Iter[String] {
   if alo < ahi {
     if blo < bhi {
-      plain_replace(out, a, alo, ahi, b, blo, bhi)
+      plain_replace(a, alo, ahi, b, blo, bhi)
     } else {
-      dump(out, "-", a, alo, ahi)
+      dump("-", a, alo, ahi)
     }
   } else if blo < bhi {
-    dump(out, "+", b, blo, bhi)
+    dump("+", b, blo, bhi)
+  } else {
+    Iter::empty()
   }
 }
 
@@ -296,22 +327,23 @@ fn keep_original_ws(s : String, tag_s : String) -> String {
 ///|
 /// Formats the `?` output lines and deals with tabs.
 fn qformat(
-  out : Array[String],
   aline : String,
   bline : String,
   atags : String,
   btags : String,
-) -> Unit {
+) -> Iter[String] {
   let atags = py_rstrip(keep_original_ws(aline, atags))
   let btags = py_rstrip(keep_original_ws(bline, btags))
-  out.push("- " + aline)
-  if atags != "" {
-    out.push("? \{atags}\n")
-  }
-  out.push("+ " + bline)
-  if btags != "" {
-    out.push("? \{btags}\n")
-  }
+  [|
+    "- " + aline,
+    ..if atags != "" {
+      ["? \{atags}\n"]
+    },
+    "+ " + bline,
+    ..if btags != "" {
+      ["? \{btags}\n"]
+    },
+  |]
 }
 
 ///|
@@ -348,7 +380,8 @@ pub fn is_character_junk(ch : Char) -> Bool {
 }
 
 ///|
-/// Compares `a` and `b` (lists of lines) and returns a [Differ]-style delta.
+/// Compares `a` and `b` (lists of lines) and returns a lazily generated
+/// [Differ]-style delta.
 ///
 /// `charjunk` defaults to [is_character_junk]; `linejunk` defaults to none.
 ///
@@ -381,7 +414,7 @@ pub fn ndiff(
   linejunk? : (String) -> Bool,
   charjunk? : (Char) -> Bool = is_character_junk,
   autojunk? : Bool = true,
-) -> Array[String] {
+) -> Iter[String] {
   Differ::new(linejunk?, charjunk~, autojunk~).compare(a, b)
 }
 
@@ -396,32 +429,38 @@ pub(all) suberror DiffError {
 /// delta: lines originating from sequence `which` (1 or 2), with the line
 /// prefixes stripped.
 ///
-/// Raises `ValueError` if `which` is not 1 or 2.
+/// Raises `ValueError` if `which` is not 1 or 2. Unlike Python, where the
+/// check happens when the generator is first advanced, it is raised
+/// immediately. The lines are produced lazily.
 ///
 /// # Example
 /// ```mbt check
 /// test {
+///   // keep the delta in an array: an `Iter` can be consumed only once
 ///   let diff = @difflib.ndiff(["one\n", "two\n", "three\n"], [
 ///     "ore\n", "tree\n", "emu\n",
-///   ])
-///   inspect(@difflib.restore(diff, 1).join(""), content="one\ntwo\nthree\n")
-///   inspect(@difflib.restore(diff, 2).join(""), content="ore\ntree\nemu\n")
+///   ]).to_array()
+///   inspect(
+///     @difflib.restore(diff.iter(), 1).join(""),
+///     content="one\ntwo\nthree\n",
+///   )
+///   inspect(@difflib.restore(diff.iter(), 2).join(""), content="ore\ntree\nemu\n")
 /// }
 /// ```
 pub fn restore(
-  delta : Array[String],
+  delta : Iter[String],
   which : Int,
-) -> Array[String] raise DiffError {
+) -> Iter[String] raise DiffError {
   let tag = match which {
     1 => "- "
     2 => "+ "
     _ => raise ValueError("unknown delta choice (must be 1 or 2): \{which}")
   }
-  let out : Array[String] = []
-  for line in delta {
+  delta.filter_map(line => {
     if line.has_prefix("  ") || line.has_prefix(tag) {
-      out.push(line.unsafe_substring(start=2, end=line.length()))
+      Some(line.unsafe_substring(start=2, end=line.length()))
+    } else {
+      None
     }
-  }
-  out
+  })
 }

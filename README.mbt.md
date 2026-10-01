@@ -38,6 +38,15 @@ It is ported from CPython's `Lib/difflib.py` (main branch, commit
 To compare strings character by character, pass `s.to_array()`. Python indexes
 strings by code point, and so does `Array[Char]`.
 
+Functions that are generators in Python return a lazy, single-pass `Iter`:
+`Differ::compare`, `ndiff`, `restore`, `unified_diff`, `context_diff`,
+`diff_bytes` and `SequenceMatcher::get_grouped_opcodes`. As in Python, no work
+(including junk callbacks) happens until the first element is requested, and
+lines are produced as they are consumed. Use `.join("")`, `.to_array()` or a
+`for` loop to consume them. Functions that return lists or strings in Python
+(`get_opcodes`, `get_matching_blocks`, `get_close_matches`, `HtmlDiff`) return
+an `Array` or a `String`.
+
 ## Examples
 
 ### SequenceMatcher
@@ -103,7 +112,7 @@ test "unified diff" {
 test "ndiff" {
   let a = ["one\n", "two\n", "three\n"]
   let b = ["ore\n", "tree\n", "emu\n"]
-  let delta = @difflib.ndiff(a, b)
+  let delta = @difflib.ndiff(a, b).to_array()
   inspect(
     delta.join(""),
     content=(
@@ -119,8 +128,8 @@ test "ndiff" {
       #|
     ),
   )
-  assert_eq(@difflib.restore(delta, 1), a)
-  assert_eq(@difflib.restore(delta, 2), b)
+  assert_eq(@difflib.restore(delta.iter(), 1).to_array(), a)
+  assert_eq(@difflib.restore(delta.iter(), 2).to_array(), b)
 }
 ```
 
@@ -155,8 +164,8 @@ test "html diff" {
 
 ## Differences from Python
 
-- Functions that are generators in Python (`ndiff`, `unified_diff`, ...)
-  compute their results eagerly and return an `Array`.
+- Python's `restore` checks `which` when its generator is first advanced;
+  here the `ValueError` is raised immediately.
 - Python's `get_grouped_opcodes` overwrites the first and last entries of the
   opcode list cached by `get_opcodes()`. This port works on a copy and leaves
   the cache unchanged.

@@ -75,9 +75,7 @@ test "TestOutputFormat.test_range_format_context" {
 
 ///|
 test "Differ._fancy_replace doctest" {
-  let out = []
-  Differ::new().fancy_replace(
-    out,
+  let out = Differ::new().fancy_replace(
     ["abcDefghiJkl\n"],
     0,
     1,
@@ -99,10 +97,9 @@ test "Differ._fancy_replace doctest" {
 
 ///|
 test "Differ._qformat doctest" {
-  let out = []
-  qformat(
-    out, "\tabcDefghiJkl\n", "\tabcdefGhijkl\n", "  ^ ^  ^      ", "  ^ ^  ^      ",
-  )
+  let out = qformat(
+    "\tabcDefghiJkl\n", "\tabcdefGhijkl\n", "  ^ ^  ^      ", "  ^ ^  ^      ",
+  ).to_array()
   debug_inspect(
     out,
     content=(
@@ -198,15 +195,19 @@ test "charset aliases follow Python codecs" {
 ///|
 test "huge context sizes do not overflow" {
   let max = 2147483647
-  assert_true(unified_diff(["x"], ["x"], n=1073741824, lineterm="").is_empty())
-  assert_true(unified_diff(["x"], ["x"], n=max, lineterm="").is_empty())
-  assert_eq(
-    unified_diff(["a", "x"], ["b", "x"], n=max, lineterm=""),
-    unified_diff(["a", "x"], ["b", "x"], n=2, lineterm=""),
+  assert_true(
+    unified_diff(["x"], ["x"], n=1073741824, lineterm="").to_array().is_empty(),
+  )
+  assert_true(
+    unified_diff(["x"], ["x"], n=max, lineterm="").to_array().is_empty(),
   )
   assert_eq(
-    context_diff(["a", "x"], ["b", "x"], n=max, lineterm=""),
-    context_diff(["a", "x"], ["b", "x"], n=2, lineterm=""),
+    unified_diff(["a", "x"], ["b", "x"], n=max, lineterm="").to_array(),
+    unified_diff(["a", "x"], ["b", "x"], n=2, lineterm="").to_array(),
+  )
+  assert_eq(
+    context_diff(["a", "x"], ["b", "x"], n=max, lineterm="").to_array(),
+    context_diff(["a", "x"], ["b", "x"], n=2, lineterm="").to_array(),
   )
   assert_eq(
     mdiff(["a", "x", "y"], ["b", "x", "y"], context=max),

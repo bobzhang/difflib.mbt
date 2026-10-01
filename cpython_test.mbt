@@ -151,21 +151,27 @@ test "TestAutojunk.test_differ_and_ndiff" {
     Array::make(50, "x\n")
   let lines2 = ["a\n", "b\n", "c\n"] + Array::make(250, "x\n")
   // Line-level autojunk propagation
-  let res_true = @difflib.Differ::new(autojunk=true).compare(lines1, lines2)
-  let res_false = @difflib.Differ::new(autojunk=false).compare(lines1, lines2)
+  let res_true = @difflib.Differ::new(autojunk=true)
+    .compare(lines1, lines2)
+    .to_array()
+  let res_false = @difflib.Differ::new(autojunk=false)
+    .compare(lines1, lines2)
+    .to_array()
   assert_not_eq(res_true, res_false)
-  let ndiff_true = @difflib.ndiff(lines1, lines2, autojunk=true)
-  let ndiff_false = @difflib.ndiff(lines1, lines2, autojunk=false)
+  let ndiff_true = @difflib.ndiff(lines1, lines2, autojunk=true).to_array()
+  let ndiff_false = @difflib.ndiff(lines1, lines2, autojunk=false).to_array()
   assert_not_eq(ndiff_true, ndiff_false)
   assert_eq(ndiff_true, res_true)
   assert_eq(ndiff_false, res_false)
   // Character-level autojunk propagation in Differ (fancy_replace)
   let line1 = "x".repeat(200) + "abc" + "x".repeat(50) + "\n"
   let line2 = "abc" + "x".repeat(250) + "\n"
-  let fancy_true = @difflib.Differ::new(autojunk=true).compare([line1], [line2])
-  let fancy_false = @difflib.Differ::new(autojunk=false).compare([line1], [
-    line2,
-  ])
+  let fancy_true = @difflib.Differ::new(autojunk=true)
+    .compare([line1], [line2])
+    .to_array()
+  let fancy_false = @difflib.Differ::new(autojunk=false)
+    .compare([line1], [line2])
+    .to_array()
   assert_not_eq(fancy_true, fancy_false)
 }
 
@@ -176,12 +182,12 @@ test "TestAutojunk.test_unified_and_context_diff" {
     Array::make(50, "x\n")
   let lines2 = ["a\n", "b\n", "c\n"] + Array::make(250, "x\n")
   assert_not_eq(
-    @difflib.unified_diff(lines1, lines2, autojunk=true),
-    @difflib.unified_diff(lines1, lines2, autojunk=false),
+    @difflib.unified_diff(lines1, lines2, autojunk=true).to_array(),
+    @difflib.unified_diff(lines1, lines2, autojunk=false).to_array(),
   )
   assert_not_eq(
-    @difflib.context_diff(lines1, lines2, autojunk=true),
-    @difflib.context_diff(lines1, lines2, autojunk=false),
+    @difflib.context_diff(lines1, lines2, autojunk=true).to_array(),
+    @difflib.context_diff(lines1, lines2, autojunk=false).to_array(),
   )
 }
 
@@ -218,8 +224,8 @@ test "TestSFbugs.test_comparing_empty_lists" {
     a=[],
     b=[],
   )
-  assert_true(s.get_grouped_opcodes().is_empty())
-  assert_true(@difflib.unified_diff([], []).is_empty())
+  assert_true(s.get_grouped_opcodes().to_array().is_empty())
+  assert_true(@difflib.unified_diff([], []).to_array().is_empty())
 }
 
 ///|
@@ -236,9 +242,9 @@ test "TestSFbugs.test_matching_blocks_cache" {
 ///|
 test "TestSFbugs.test_added_tab_hint" {
   // Check fix for bug #1488943
-  let diff = @difflib.Differ::new().compare(["\tI am a buggy"], [
-    "\t\tI am a bug",
-  ])
+  let diff = @difflib.Differ::new()
+    .compare(["\tI am a buggy"], ["\t\tI am a bug"])
+    .to_array()
   assert_eq(diff[0], "- \tI am a buggy")
   assert_eq(diff[1], "? \t          --\n")
   assert_eq(diff[2], "+ \t\tI am a bug")
@@ -247,7 +253,9 @@ test "TestSFbugs.test_added_tab_hint" {
 
 ///|
 test "TestSFbugs.test_hint_indented_properly_with_tabs" {
-  let diff = @difflib.Differ::new().compare(["\t \t \t^"], ["\t \t \t^\n"])
+  let diff = @difflib.Differ::new()
+    .compare(["\t \t \t^"], ["\t \t \t^\n"])
+    .to_array()
   assert_eq(diff[0], "- \t \t \t^")
   assert_eq(diff[1], "+ \t \t \t^\n")
   assert_eq(diff[2], "? \t \t \t +\n")
@@ -330,7 +338,7 @@ test "TestDiffer.test_close_matches_aligned" {
   let a = ["cat\n", "dog\n", "close match 1\n", "close match 2\n"]
   let b = ["close match 3\n", "close match 4\n", "kitten\n", "puppy\n"]
   debug_inspect(
-    @difflib.Differ::new().compare(a, b),
+    @difflib.Differ::new().compare(a, b).to_array(),
     content=(
       #|[
       #|  "- cat\n",
@@ -353,7 +361,7 @@ test "TestDiffer.test_close_matches_aligned" {
 ///|
 test "TestDiffer.test_one_insert" {
   debug_inspect(
-    @difflib.Differ::new().compare(["b", "b"], ["a", "b", "b"]),
+    @difflib.Differ::new().compare(["b", "b"], ["a", "b", "b"]).to_array(),
     content=(
       #|["+ a", "  b", "  b"]
     ),
@@ -363,7 +371,7 @@ test "TestDiffer.test_one_insert" {
 ///|
 test "TestDiffer.test_one_delete" {
   debug_inspect(
-    @difflib.Differ::new().compare(["a", "b", "b"], ["b", "b"]),
+    @difflib.Differ::new().compare(["a", "b", "b"], ["b", "b"]).to_array(),
     content=(
       #|["- a", "  b", "  b"]
     ),
@@ -380,7 +388,7 @@ test "TestOutputFormat.test_tab_delimiter" {
     fromfiledate="2005-01-26 23:30:50",
     tofiledate="2010-04-02 10:20:52",
     lineterm="",
-  )
+  ).to_array()
   assert_eq(ud[0:2].to_owned(), [
     "--- Original\t2005-01-26 23:30:50", "+++ Current\t2010-04-02 10:20:52",
   ])
@@ -392,7 +400,7 @@ test "TestOutputFormat.test_tab_delimiter" {
     fromfiledate="2005-01-26 23:30:50",
     tofiledate="2010-04-02 10:20:52",
     lineterm="",
-  )
+  ).to_array()
   assert_eq(cd[0:2].to_owned(), [
     "*** Original\t2005-01-26 23:30:50", "--- Current\t2010-04-02 10:20:52",
   ])
@@ -406,7 +414,7 @@ test "TestOutputFormat.test_no_trailing_tab_on_empty_filedate" {
     fromfile="Original",
     tofile="Current",
     lineterm="",
-  )
+  ).to_array()
   assert_eq(ud[0:2].to_owned(), ["--- Original", "+++ Current"])
   let cd = @difflib.context_diff(
     ["one"],
@@ -414,7 +422,7 @@ test "TestOutputFormat.test_no_trailing_tab_on_empty_filedate" {
     fromfile="Original",
     tofile="Current",
     lineterm="",
-  )
+  ).to_array()
   assert_eq(cd[0:2].to_owned(), ["*** Original", "--- Current"])
 }
 
@@ -429,7 +437,7 @@ test "TestOutputFormat.test_unified_diff_colored_output" {
     tofiledate="2010-04-02 10:20:52",
     lineterm="",
     color=true,
-  )
+  ).to_array()
   assert_eq(actual, [
     "\u{1b}[1m--- Original\t2005-01-26 23:30:50\u{1b}[0m", "\u{1b}[1m+++ Current\t2010-04-02 10:20:52\u{1b}[0m",
     "\u{1b}[36m@@ -1,2 +1,2 @@\u{1b}[0m", "\u{1b}[31m-one\u{1b}[0m", "\u{1b}[32m+two\u{1b}[0m",
@@ -443,10 +451,14 @@ test "TestBytes.test_byte_content" {
   let a : Array[Bytes] = [b"hello", b"andr\xe9"] // iso-8859-1 bytes
   let b : Array[Bytes] = [b"hello", b"andr\xc3\xa9"] // utf-8 bytes
   for format in [@difflib.DiffFormat::Unified, Context] {
-    ignore(@difflib.diff_bytes(format, a, a))
-    ignore(@difflib.diff_bytes(format, a, b))
-    ignore(@difflib.diff_bytes(format, a, a, fromfile=b"a", tofile=b"a"))
-    ignore(@difflib.diff_bytes(format, a, b, fromfile=b"a", tofile=b"b"))
+    ignore(@difflib.diff_bytes(format, a, a).to_array())
+    ignore(@difflib.diff_bytes(format, a, b).to_array())
+    ignore(
+      @difflib.diff_bytes(format, a, a, fromfile=b"a", tofile=b"a").to_array(),
+    )
+    ignore(
+      @difflib.diff_bytes(format, a, b, fromfile=b"a", tofile=b"b").to_array(),
+    )
     ignore(
       @difflib.diff_bytes(
         format,
@@ -456,7 +468,7 @@ test "TestBytes.test_byte_content" {
         tofile=b"a",
         fromfiledate=b"2005",
         tofiledate=b"2013",
-      ),
+      ).to_array(),
     )
     ignore(
       @difflib.diff_bytes(
@@ -467,10 +479,10 @@ test "TestBytes.test_byte_content" {
         tofile=b"b",
         fromfiledate=b"2005",
         tofiledate=b"2013",
-      ),
+      ).to_array(),
     )
   }
-  let unified = @difflib.diff_bytes(Unified, a, b, lineterm=b"")
+  let unified = @difflib.diff_bytes(Unified, a, b, lineterm=b"").to_array()
   let expected : Array[Bytes] = [
     b"--- ", b"+++ ", b"@@ -1,2 +1,2 @@", b" hello", b"-andr\xe9", b"+andr\xc3\xa9",
   ]
@@ -490,7 +502,7 @@ test "TestBytes.test_byte_filenames" {
     b"+\xc5\x81odz is a city in Poland.",
   ]
   assert_eq(
-    @difflib.diff_bytes(Unified, a, b, fromfile=fna, tofile=fnb, lineterm=b""),
+    @difflib.diff_bytes(Unified, a, b, fromfile=fna, tofile=fnb, lineterm=b"").to_array(),
     expect,
   )
   // with dates (plain ASCII)
@@ -508,7 +520,7 @@ test "TestBytes.test_byte_filenames" {
       fromfiledate=b"2005-03-18",
       tofiledate=b"2005-03-19",
       lineterm=b"",
-    ),
+    ).to_array(),
     expect,
   )
   let context = @difflib.diff_bytes(
@@ -518,7 +530,7 @@ test "TestBytes.test_byte_filenames" {
     fromfile=fna,
     tofile=fnb,
     lineterm=b"",
-  )
+  ).to_array()
   let expect : Array[Bytes] = [
     b"*** \xb3odz.txt", b"--- \xc5\x82odz.txt", b"***************", b"*** 1 ****",
     b"! \xa3odz is a city in Poland.", b"--- 1 ----", b"! \xc5\x81odz is a city in Poland.",
@@ -531,7 +543,7 @@ test "diff_bytes round-trips all 256 byte values" {
   let all = Bytes::makei(256, i => i.to_byte())
   let a = [all]
   let b = [b"x" + all]
-  let out = @difflib.diff_bytes(Unified, a, b, lineterm=b"")
+  let out = @difflib.diff_bytes(Unified, a, b, lineterm=b"").to_array()
   assert_eq(out[3], b"-" + all)
   assert_eq(out[4], b"+x" + all)
 }
@@ -546,7 +558,7 @@ test "TestInputTypes.test_mixed_types_dates" {
     tofile="b",
     fromfiledate="1 fév",
     tofiledate="3 fév",
-  )
+  ).to_array()
   assert_eq(out[0], "--- a\t1 fév\n")
 }
 
@@ -661,7 +673,7 @@ test "TestCloseMatches.test_invalid_inputs" {
 ///|
 test "TestRestore.test_invalid_input" {
   for which in [0, 3] {
-    try @difflib.restore([], which) catch {
+    try @difflib.restore(Iter::empty(), which) catch {
       err =>
         debug_inspect(
           err,
@@ -687,7 +699,9 @@ test "get_grouped_opcodes doctest" {
     ignore(b.remove(23)) // Make a deletion
   }
   b[30] = b[30] + "y" // Make another replacement
-  let groups = @difflib.SequenceMatcher::new(a~, b~).get_grouped_opcodes()
+  let groups = @difflib.SequenceMatcher::new(a~, b~)
+    .get_grouped_opcodes()
+    .to_array()
   inspect(
     groups.map(opcodes_text).join("\n--\n"),
     content=(
@@ -730,18 +744,20 @@ test "set_seq1 / set_seq2 doctests" {
 ///|
 test "panic get_grouped_opcodes rejects negative n" {
   ignore(
-    @difflib.SequenceMatcher::new(a=['a'], b=['b']).get_grouped_opcodes(n=-1),
+    @difflib.SequenceMatcher::new(a=['a'], b=['b'])
+    .get_grouped_opcodes(n=-1)
+    .to_array(),
   )
 }
 
 ///|
 test "panic unified_diff rejects negative n" {
-  ignore(@difflib.unified_diff(["a"], ["b"], n=-2))
+  ignore(@difflib.unified_diff(["a"], ["b"], n=-2).to_array())
 }
 
 ///|
 test "panic context_diff rejects negative n" {
-  ignore(@difflib.context_diff(["a"], ["b"], n=-2))
+  ignore(@difflib.context_diff(["a"], ["b"], n=-2).to_array())
 }
 
 ///|

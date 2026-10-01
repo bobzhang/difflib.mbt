@@ -476,19 +476,56 @@ pub fn[T : Hash + Eq] SequenceMatcher::get_opcodes(
 ///|
 /// Isolates change clusters by eliminating ranges with no changes.
 ///
-/// Returns groups of opcodes with up to `n` lines of context each.
+/// Returns groups of opcodes with up to `n` lines of context each. Like
+/// Python's generator, the groups are computed when the returned iterator is
+/// first advanced, and it can be consumed only once.
 ///
 /// Unlike Python, the cached result of `get_opcodes()` is not mutated.
+///
+/// # Example
+/// ```mbt check
+/// test {
+///   let a = Array::makei(39, i => (i + 1).to_string())
+///   let b = a.copy()
+///   b.insert(8, "i") // Make an insertion
+///   b[20] = b[20] + "x" // Make a replacement
+///   for _ in 0..<5 {
+///     b.remove(23) |> ignore // Make a deletion
+///   }
+///   b[30] = b[30] + "y" // Make another replacement
+///   let groups = @difflib.SequenceMatcher::new(a~, b~).get_grouped_opcodes()
+///   inspect(
+///     groups
+///     .map(g => {
+///       g.map(op => "\{op.tag} \{op.i1} \{op.i2} \{op.j1} \{op.j2}").join(", ")
+///     })
+///     .join("\n"),
+///     content=(
+///       #|equal 5 8 5 8, insert 8 8 8 9, equal 8 11 9 12
+///       #|equal 16 19 17 20, replace 19 20 20 21, equal 20 22 21 23, delete 22 27 23 23, equal 27 30 23 26
+///       #|equal 31 34 27 30, replace 34 35 30 31, equal 35 38 31 34
+///     ),
+///   )
+/// }
+/// ```
 ///
 /// # Panics
 /// Panics if `n` is negative (Python returns meaningless ranges).
 pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(
   self : SequenceMatcher[T],
   n? : Int = 3,
-) -> Array[Array[Opcode]] {
+) -> Iter[Array[Opcode]] {
   if n < 0 {
     abort("get_grouped_opcodes: n must be >= 0, got \{n}")
   }
+  deferred(() => self.grouped_opcodes(n).iter())
+}
+
+///|
+fn[T : Hash + Eq] SequenceMatcher::grouped_opcodes(
+  self : SequenceMatcher[T],
+  n : Int,
+) -> Array[Array[Opcode]] {
   // Any n >= max(len(a), len(b), 1) gives the same groups, so clamp it;
   // the additions below saturate, so even huge inputs cannot overflow.
   let n = @cmp.minimum(

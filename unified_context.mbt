@@ -48,6 +48,10 @@ let no_color_theme : DiffTheme = {
 ///|
 /// Compares two sequences of lines and returns the delta as a unified diff.
 ///
+/// The lines are generated lazily, like Python's generator: nothing is
+/// computed until the first line is requested, and the returned iterator can
+/// be consumed only once.
+///
 /// - `n` (default 3): the number of context lines; must not be negative
 ///   (it panics otherwise).
 /// - `lineterm` (default `"\n"`): appended to the control lines (`---`,
@@ -96,46 +100,62 @@ pub fn unified_diff(
   lineterm? : String = "\n",
   autojunk? : Bool = true,
   color? : Bool = false,
-) -> Array[String] {
+) -> Iter[String] {
+  check_context_size(n)
   let t = if color { color_theme } else { no_color_theme }
-  let out : Array[String] = []
-  let mut started = false
-  for group in SequenceMatcher::new(a~, b~, autojunk~).get_grouped_opcodes(n~) {
-    if !started {
-      started = true
-      let fromdate = if fromfiledate != "" { "\t\{fromfiledate}" } else { "" }
-      let todate = if tofiledate != "" { "\t\{tofiledate}" } else { "" }
-      out.push("\{t.header}--- \{fromfile}\{fromdate}\{lineterm}\{t.reset}")
-      out.push("\{t.header}+++ \{tofile}\{todate}\{lineterm}\{t.reset}")
-    }
-    let first = group[0]
-    let last = group[group.length() - 1]
-    let file1_range = format_range_unified(first.i1, last.i2)
-    let file2_range = format_range_unified(first.j1, last.j2)
-    out.push(
-      "\{t.hunk}@@ -\{file1_range} +\{file2_range} @@\{lineterm}\{t.reset}",
-    )
-    for op in group {
-      let { tag, i1, i2, j1, j2, } = op
-      if tag is Equal {
-        for line in a[i1:i2] {
-          out.push("\{t.context} \{line}\{t.reset}")
-        }
-        continue
+  deferred(() => {
+    let groups = SequenceMatcher::new(a~, b~, autojunk~).get_grouped_opcodes(n~)
+    groups
+    .mapi((index, group) => {
+      let header : Iter[String] = if index == 0 {
+        let fromdate = if fromfiledate != "" { "\t\{fromfiledate}" } else { "" }
+        let todate = if tofiledate != "" { "\t\{tofiledate}" } else { "" }
+        [|
+          "\{t.header}--- \{fromfile}\{fromdate}\{lineterm}\{t.reset}",
+          "\{t.header}+++ \{tofile}\{todate}\{lineterm}\{t.reset}",
+        |]
+      } else {
+        Iter::empty()
       }
-      if tag is (Replace | Delete) {
-        for line in a[i1:i2] {
-          out.push("\{t.removed}-\{line}\{t.reset}")
-        }
+      let first = group[0]
+      let last = group[group.length() - 1]
+      let file1_range = format_range_unified(first.i1, last.i2)
+      let file2_range = format_range_unified(first.j1, last.j2)
+      let removed = (op : Opcode) => {
+        [|
+          for line in a[op.i1:op.i2] => "\{t.removed}-\{line}\{t.reset}"
+        |]
       }
-      if tag is (Replace | Insert) {
-        for line in b[j1:j2] {
-          out.push("\{t.added}+\{line}\{t.reset}")
-        }
+      let added = (op : Opcode) => {
+        [|
+          for line in b[op.j1:op.j2] => "\{t.added}+\{line}\{t.reset}"
+        |]
       }
-    }
+      header +
+      [|"\{t.hunk}@@ -\{file1_range} +\{file2_range} @@\{lineterm}\{t.reset}"|] +
+      group
+      .iter()
+      .flat_map(op => {
+        match op.tag {
+          Equal =>
+            [|
+              for line in a[op.i1:op.i2] => "\{t.context} \{line}\{t.reset}"
+            |]
+          Delete => removed(op)
+          Insert => added(op)
+          Replace => removed(op) + added(op)
+        }
+      })
+    })
+    .flatten()
+  })
+}
+
+///|
+fn check_context_size(n : Int) -> Unit {
+  if n < 0 {
+    abort("the number of context lines must be >= 0, got \{n}")
   }
-  out
 }
 
 ///|
@@ -166,7 +186,8 @@ fn context_prefix(tag : Tag) -> String {
 ///|
 /// Compares two sequences of lines and returns the delta as a context diff.
 ///
-/// The parameters have the same meaning as for [unified_diff].
+/// The parameters have the same meaning as for [unified_diff], and the lines
+/// are likewise generated lazily.
 ///
 /// # Example
 /// ```mbt check
@@ -208,44 +229,64 @@ pub fn context_diff(
   n? : Int = 3,
   lineterm? : String = "\n",
   autojunk? : Bool = true,
-) -> Array[String] {
-  let out : Array[String] = []
-  let mut started = false
-  for group in SequenceMatcher::new(a~, b~, autojunk~).get_grouped_opcodes(n~) {
-    if !started {
-      started = true
-      let fromdate = if fromfiledate != "" { "\t\{fromfiledate}" } else { "" }
-      let todate = if tofiledate != "" { "\t\{tofiledate}" } else { "" }
-      out.push("*** \{fromfile}\{fromdate}\{lineterm}")
-      out.push("--- \{tofile}\{todate}\{lineterm}")
-    }
-    let first = group[0]
-    let last = group[group.length() - 1]
-    out.push("***************" + lineterm)
-    let file1_range = format_range_context(first.i1, last.i2)
-    out.push("*** \{file1_range} ****\{lineterm}")
-    if group.iter().any(op => op.tag is (Replace | Delete)) {
-      for op in group {
-        if !(op.tag is Insert) {
-          for line in a[op.i1:op.i2] {
-            out.push(context_prefix(op.tag) + line)
-          }
-        }
+) -> Iter[String] {
+  check_context_size(n)
+  deferred(() => {
+    let groups = SequenceMatcher::new(a~, b~, autojunk~).get_grouped_opcodes(n~)
+    groups
+    .mapi((index, group) => {
+      let header : Iter[String] = if index == 0 {
+        let fromdate = if fromfiledate != "" { "\t\{fromfiledate}" } else { "" }
+        let todate = if tofiledate != "" { "\t\{tofiledate}" } else { "" }
+        [|
+          "*** \{fromfile}\{fromdate}\{lineterm}",
+          "--- \{tofile}\{todate}\{lineterm}",
+        |]
+      } else {
+        Iter::empty()
       }
-    }
-    let file2_range = format_range_context(first.j1, last.j2)
-    out.push("--- \{file2_range} ----\{lineterm}")
-    if group.iter().any(op => op.tag is (Replace | Insert)) {
-      for op in group {
-        if !(op.tag is Delete) {
-          for line in b[op.j1:op.j2] {
-            out.push(context_prefix(op.tag) + line)
-          }
-        }
+      let first = group[0]
+      let last = group[group.length() - 1]
+      let file1_range = format_range_context(first.i1, last.i2)
+      let file2_range = format_range_context(first.j1, last.j2)
+      // the "from" side lists no lines when the group only inserts, and the
+      // "to" side lists none when it only deletes
+      let from_lines : Iter[String] = if group
+        .iter()
+        .any(op => op.tag is (Replace | Delete)) {
+        group
+        .iter()
+        .filter(op => !(op.tag is Insert))
+        .flat_map(op => {
+          [|
+            for line in a[op.i1:op.i2] => context_prefix(op.tag) + line
+          |]
+        })
+      } else {
+        Iter::empty()
       }
-    }
-  }
-  out
+      let to_lines : Iter[String] = if group
+        .iter()
+        .any(op => op.tag is (Replace | Insert)) {
+        group
+        .iter()
+        .filter(op => !(op.tag is Delete))
+        .flat_map(op => {
+          [|
+            for line in b[op.j1:op.j2] => context_prefix(op.tag) + line
+          |]
+        })
+      } else {
+        Iter::empty()
+      }
+      header +
+      [|"***************" + lineterm, "*** \{file1_range} ****\{lineterm}"|] +
+      from_lines +
+      [|"--- \{file2_range} ----\{lineterm}"|] +
+      to_lines
+    })
+    .flatten()
+  })
 }
 
 ///|
@@ -302,7 +343,7 @@ fn latin1_to_bytes(s : String) -> Bytes {
 ///     b"--- \xb3odz.txt", b"+++ \xc5\x82odz.txt", b"@@ -1 +1 @@", b"-\xa3odz is a city in Poland.",
 ///     b"+\xc5\x81odz is a city in Poland.",
 ///   ]
-///   assert_eq(diff, expected)
+///   assert_eq(diff.to_array(), expected)
 /// }
 /// ```
 pub fn diff_bytes(
@@ -316,39 +357,42 @@ pub fn diff_bytes(
   n? : Int = 3,
   lineterm? : Bytes = b"\n",
   autojunk? : Bool = true,
-) -> Array[Bytes] {
-  let a = a.map(line => bytes_to_latin1(line))
-  let b = b.map(line => bytes_to_latin1(line))
-  let fromfile = bytes_to_latin1(fromfile)
-  let tofile = bytes_to_latin1(tofile)
-  let fromfiledate = bytes_to_latin1(fromfiledate)
-  let tofiledate = bytes_to_latin1(tofiledate)
-  let lineterm = bytes_to_latin1(lineterm)
-  let lines = match format {
-    Unified =>
-      unified_diff(
-        a,
-        b,
-        fromfile~,
-        tofile~,
-        fromfiledate~,
-        tofiledate~,
-        n~,
-        lineterm~,
-        autojunk~,
-      )
-    Context =>
-      context_diff(
-        a,
-        b,
-        fromfile~,
-        tofile~,
-        fromfiledate~,
-        tofiledate~,
-        n~,
-        lineterm~,
-        autojunk~,
-      )
-  }
-  lines.map(latin1_to_bytes)
+) -> Iter[Bytes] {
+  check_context_size(n)
+  deferred(() => {
+    let a = a.map(line => bytes_to_latin1(line))
+    let b = b.map(line => bytes_to_latin1(line))
+    let fromfile = bytes_to_latin1(fromfile)
+    let tofile = bytes_to_latin1(tofile)
+    let fromfiledate = bytes_to_latin1(fromfiledate)
+    let tofiledate = bytes_to_latin1(tofiledate)
+    let lineterm = bytes_to_latin1(lineterm)
+    let lines = match format {
+      Unified =>
+        unified_diff(
+          a,
+          b,
+          fromfile~,
+          tofile~,
+          fromfiledate~,
+          tofiledate~,
+          n~,
+          lineterm~,
+          autojunk~,
+        )
+      Context =>
+        context_diff(
+          a,
+          b,
+          fromfile~,
+          tofile~,
+          fromfiledate~,
+          tofiledate~,
+          n~,
+          lineterm~,
+          autojunk~,
+        )
+    }
+    lines.map(latin1_to_bytes)
+  })
 }

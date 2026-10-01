@@ -6,9 +6,9 @@ import {
 }
 
 // Values
-pub fn context_diff(Array[String], Array[String], fromfile? : String, tofile? : String, fromfiledate? : String, tofiledate? : String, n? : Int, lineterm? : String, autojunk? : Bool) -> Array[String]
+pub fn context_diff(Array[String], Array[String], fromfile? : String, tofile? : String, fromfiledate? : String, tofiledate? : String, n? : Int, lineterm? : String, autojunk? : Bool) -> Iter[String]
 
-pub fn diff_bytes(DiffFormat, Array[Bytes], Array[Bytes], fromfile? : Bytes, tofile? : Bytes, fromfiledate? : Bytes, tofiledate? : Bytes, n? : Int, lineterm? : Bytes, autojunk? : Bool) -> Array[Bytes]
+pub fn diff_bytes(DiffFormat, Array[Bytes], Array[Bytes], fromfile? : Bytes, tofile? : Bytes, fromfiledate? : Bytes, tofiledate? : Bytes, n? : Int, lineterm? : Bytes, autojunk? : Bool) -> Iter[Bytes]
 
 pub fn get_close_matches(String, Array[String], n? : Int, cutoff? : Double, autojunk? : Bool) -> Array[String] raise DiffError
 
@@ -16,11 +16,11 @@ pub fn is_character_junk(Char) -> Bool
 
 pub fn is_line_junk(String) -> Bool
 
-pub fn ndiff(Array[String], Array[String], linejunk? : (String) -> Bool, charjunk? : (Char) -> Bool, autojunk? : Bool) -> Array[String]
+pub fn ndiff(Array[String], Array[String], linejunk? : (String) -> Bool, charjunk? : (Char) -> Bool, autojunk? : Bool) -> Iter[String]
 
-pub fn restore(Array[String], Int) -> Array[String] raise DiffError
+pub fn restore(Iter[String], Int) -> Iter[String] raise DiffError
 
-pub fn unified_diff(Array[String], Array[String], fromfile? : String, tofile? : String, fromfiledate? : String, tofiledate? : String, n? : Int, lineterm? : String, autojunk? : Bool, color? : Bool) -> Array[String]
+pub fn unified_diff(Array[String], Array[String], fromfile? : String, tofile? : String, fromfiledate? : String, tofiledate? : String, n? : Int, lineterm? : String, autojunk? : Bool, color? : Bool) -> Iter[String]
 
 // Errors
 pub(all) suberror DiffError {
@@ -36,7 +36,7 @@ pub(all) enum DiffFormat {
 pub struct Differ {
   // private fields
 }
-pub fn Differ::compare(Self, Array[String], Array[String]) -> Array[String]
+pub fn Differ::compare(Self, Array[String], Array[String]) -> Iter[String]
 pub fn Differ::new(linejunk? : (String) -> Bool, charjunk? : (Char) -> Bool, autojunk? : Bool) -> Self
 
 pub struct HtmlDiff {
@@ -67,7 +67,7 @@ pub struct SequenceMatcher[T] {
 pub fn[T] SequenceMatcher::bjunk(Self[T]) -> Array[T]
 pub fn[T] SequenceMatcher::bpopular(Self[T]) -> Array[T]
 pub fn[T : Hash + Eq] SequenceMatcher::find_longest_match(Self[T], alo? : Int, ahi? : Int, blo? : Int, bhi? : Int) -> Match
-pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(Self[T], n? : Int) -> Array[Array[Opcode]]
+pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(Self[T], n? : Int) -> Iter[Array[Opcode]]
 pub fn[T : Hash + Eq] SequenceMatcher::get_matching_blocks(Self[T]) -> Array[Match]
 pub fn[T : Hash + Eq] SequenceMatcher::get_opcodes(Self[T]) -> Array[Opcode]
 pub fn[T : Hash + Eq] SequenceMatcher::new(isjunk? : (T) -> Bool, a? : Array[T], b? : Array[T], autojunk? : Bool) -> Self[T]

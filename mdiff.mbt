@@ -61,20 +61,14 @@ fn drop_chars(s : String, start : Int) -> String {
 ///|
 /// State shared by the line-level helpers of [mdiff].
 priv struct MdiffState {
-  diff_lines : Array[String]
-  mut next_index : Int
+  diff_lines : Iter[String]
   num_lines : FixedArray[Int]
 }
 
 ///|
+/// Python's `next(diff_lines_iterator, 'X')`.
 fn MdiffState::next_diff_line(self : MdiffState) -> String {
-  if self.next_index < self.diff_lines.length() {
-    let line = self.diff_lines[self.next_index]
-    self.next_index += 1
-    line
-  } else {
-    "X"
-  }
+  self.diff_lines.next().unwrap_or("X")
 }
 
 ///|
@@ -301,11 +295,7 @@ fn mdiff(
   autojunk? : Bool = true,
 ) -> Array[MdiffRow] {
   let diff_lines = ndiff(fromlines, tolines, linejunk?, charjunk~, autojunk~)
-  let state : MdiffState = {
-    diff_lines,
-    next_index: 0,
-    num_lines: FixedArray::make(2, 0),
-  }
+  let state : MdiffState = { diff_lines, num_lines: FixedArray::make(2, 0), }
   let pairs = line_pair_iterator(state.line_iterator())
   let out : Array[MdiffRow] = []
   guard context is Some(context) else {

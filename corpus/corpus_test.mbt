@@ -115,7 +115,10 @@ fn check_matcher(case_ : Json) -> Unit raise {
   guard field(case_, "grouped") is Array(groups) else { fail("bad grouped") }
   let fresh = @difflib.SequenceMatcher::new(isjunk?, a~, b~, autojunk~)
   assert_eq(
-    fresh.get_grouped_opcodes(n=int_field(case_, "n")).map(g => show_opcodes(g)),
+    fresh
+    .get_grouped_opcodes(n=int_field(case_, "n"))
+    .map(g => show_opcodes(g))
+    .to_array(),
     groups.map(opcodes_of),
   )
   assert_eq(s.ratio(), num_field(case_, "ratio"))
@@ -140,14 +143,20 @@ fn check_lines(case_ : Json) -> Unit raise {
     _ => None
   }
   let charjunk = char_junk(str_field(case_, "charjunk")).unwrap_or(_ => false)
-  let nd = @difflib.ndiff(a, b, linejunk?, charjunk~, autojunk~)
+  let nd = @difflib.ndiff(a, b, linejunk?, charjunk~, autojunk~).to_array()
   assert_eq(nd, strings_field(case_, "ndiff"))
   assert_eq(
-    @difflib.Differ::new(autojunk~).compare(a, b),
+    @difflib.Differ::new(autojunk~).compare(a, b).to_array(),
     strings_field(case_, "differ_plain"),
   )
-  assert_eq(@difflib.restore(nd, 1), strings_field(case_, "restore1"))
-  assert_eq(@difflib.restore(nd, 2), strings_field(case_, "restore2"))
+  assert_eq(
+    @difflib.restore(nd.iter(), 1).to_array(),
+    strings_field(case_, "restore1"),
+  )
+  assert_eq(
+    @difflib.restore(nd.iter(), 2).to_array(),
+    strings_field(case_, "restore2"),
+  )
   let n = int_field(case_, "n")
   let lineterm = str_field(case_, "lineterm")
   let fromfile = str_field(case_, "fromfile")
@@ -166,7 +175,7 @@ fn check_lines(case_ : Json) -> Unit raise {
       lineterm~,
       autojunk~,
       color=bool_field(case_, "color"),
-    ),
+    ).to_array(),
     strings_field(case_, "unified"),
   )
   assert_eq(
@@ -180,7 +189,7 @@ fn check_lines(case_ : Json) -> Unit raise {
       n~,
       lineterm~,
       autojunk~,
-    ),
+    ).to_array(),
     strings_field(case_, "context"),
   )
 }
@@ -283,7 +292,10 @@ fn check_stateful(case_ : Json) -> Unit raise {
         // Python mutates its cached opcodes here; compare a fresh matcher's
         // groups too, so both code paths are exercised.
         assert_eq(
-          s.get_grouped_opcodes(n=int_of(n)).map(g => show_opcodes(g)),
+          s
+          .get_grouped_opcodes(n=int_of(n))
+          .map(g => show_opcodes(g))
+          .to_array(),
           groups.map(opcodes_of),
         )
       }
@@ -378,7 +390,7 @@ fn check_bytes(case_ : Json) -> Unit raise {
       tofiledate=hex_to_bytes(str_field(case_, "tofiledate")),
       n=int_field(case_, "n"),
       lineterm=hex_to_bytes(str_field(case_, "lineterm")),
-    ),
+    ).to_array(),
     hex_lines("result"),
   )
 }
@@ -433,9 +445,9 @@ fn check_surrogate(case_ : Json) -> Unit raise {
   assert_eq(m.ratio(), num_field(case_, "ratio"))
   let a = codes_list(field(case_, "a"))
   let b = codes_list(field(case_, "b"))
-  assert_eq(@difflib.ndiff(a, b), codes_list(field(case_, "ndiff")))
+  assert_eq(@difflib.ndiff(a, b).to_array(), codes_list(field(case_, "ndiff")))
   assert_eq(
-    @difflib.unified_diff(a, b, n=1),
+    @difflib.unified_diff(a, b, n=1).to_array(),
     codes_list(field(case_, "unified")),
   )
   guard field(case_, "is_line_junk") is Array(junk) else { fail("bad junk") }
