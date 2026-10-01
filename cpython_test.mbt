@@ -12,7 +12,10 @@ fn opcodes_text(ops : Array[@difflib.Opcode]) -> String {
 
 ///|
 fn approx_eq(x : Double, y : Double, places : Int) -> Bool {
-  let scale = 10.0.pow(places.to_double())
+  let mut scale = 1.0
+  for _ in 0..<places {
+    scale *= 10.0
+  }
   ((x - y) * scale).round() == 0.0
 }
 
