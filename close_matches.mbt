@@ -47,9 +47,9 @@
 pub fn get_close_matches(
   word : String,
   possibilities : Array[String],
-  n? : Int = 3,
-  cutoff? : Double = 0.6,
-  autojunk? : Bool = true,
+  n~ : Int32 = 3,
+  cutoff~ : Double = 0.6,
+  autojunk~ : Bool = true,
 ) -> Array[String] raise DiffError {
   if !(n > 0) {
     raise ValueError("n must be > 0: \{n}")

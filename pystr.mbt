@@ -8,9 +8,9 @@
 fn is_py_space(c : Char) -> Bool {
   match c {
     '\t' | '\n' | '\u{0b}' | '\u{0c}' | '\r' => true
-    '\u{1c}'..='\u{1f}' => true
+    '\u{1c}'..<='\u{1f}' => true
     ' ' | '\u{85}' | '\u{a0}' | '\u{1680}' => true
-    '\u{2000}'..='\u{200a}' => true
+    '\u{2000}'..<='\u{200a}' => true
     '\u{2028}' | '\u{2029}' | '\u{202f}' | '\u{205f}' | '\u{3000}' => true
     _ => false
   }
@@ -48,7 +48,7 @@ fn py_strip(s : String) -> String {
 
 ///|
 /// Python's `str.expandtabs(tabsize)`: the column resets after `\n` or `\r`.
-fn py_expandtabs(s : String, tabsize : Int) -> String {
+fn py_expandtabs(s : String, tabsize : Int32) -> String {
   let buf = StringBuilder()
   let mut column = 0
   for c in s {
@@ -76,7 +76,7 @@ fn py_expandtabs(s : String, tabsize : Int) -> String {
 
 ///|
 /// Compares two strings by code point, like Python's `str` ordering.
-fn py_str_compare(x : String, y : String) -> Int {
+fn py_str_compare(x : String, y : String) -> Int32 {
   let xs = x.to_array()
   let ys = y.to_array()
   let n = @cmp.minimum(xs.length(), ys.length())

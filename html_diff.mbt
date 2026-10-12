@@ -2,14 +2,14 @@
 /// Counter used to generate unique anchor prefixes so that multiple tables
 /// can exist on the same HTML page without conflicts (Python's class-level
 /// `HtmlDiff._default_prefix`).
-let html_default_prefix : Ref[Int] = { val: 0, }
+let html_default_prefix : Ref[Int32] = { val: 0, }
 
 ///|
 /// Resets the global anchor-prefix counter shared by all [HtmlDiff]
 /// instances (Python's `HtmlDiff._default_prefix = value`). Each call to
 /// [HtmlDiff::make_table] or [HtmlDiff::make_file] uses the current value and
 /// then increments it.
-pub fn HtmlDiff::reset_prefix_counter(value? : Int = 0) -> Unit {
+pub fn HtmlDiff::reset_prefix_counter(value~ : Int32 = 0) -> Unit {
   html_default_prefix.val = value
 }
 
@@ -30,8 +30,8 @@ pub fn HtmlDiff::reset_prefix_counter(value? : Int = 0) -> Unit {
 /// }
 /// ```
 pub struct HtmlDiff {
-  priv tabsize : Int
-  priv wrapcolumn : Int?
+  priv tabsize : Int32
+  priv wrapcolumn : Int32?
   priv linejunk : ((String) -> Bool)?
   priv charjunk : ((Char) -> Bool)?
   priv autojunk : Bool
@@ -47,11 +47,11 @@ pub struct HtmlDiff {
 /// - `linejunk`, `charjunk`, `autojunk`: passed to [ndiff] (`charjunk`
 ///   defaults to [is_character_junk]).
 pub fn HtmlDiff::new(
-  tabsize? : Int = 8,
-  wrapcolumn? : Int,
+  tabsize~ : Int32 = 8,
+  wrapcolumn? : Int32,
   linejunk? : (String) -> Bool,
-  charjunk? : (Char) -> Bool = is_character_junk,
-  autojunk? : Bool = true,
+  charjunk~ : (Char) -> Bool = is_character_junk,
+  autojunk~ : Bool = true,
 ) -> HtmlDiff {
   if wrapcolumn is Some(w) && w < 0 {
     abort("HtmlDiff: wrapcolumn must be >= 0, got \{w}")
@@ -76,11 +76,11 @@ pub fn HtmlDiff::make_file(
   self : HtmlDiff,
   fromlines : Array[String],
   tolines : Array[String],
-  fromdesc? : String = "",
-  todesc? : String = "",
-  context? : Bool = false,
-  numlines? : Int = 5,
-  charset? : String = "utf-8",
+  fromdesc~ : String = "",
+  todesc~ : String = "",
+  context~ : Bool = false,
+  numlines~ : Int32 = 5,
+  charset~ : String = "utf-8",
 ) -> String {
   let html = html_file_template(
     styles=html_styles,
@@ -247,10 +247,10 @@ pub fn HtmlDiff::make_table(
   self : HtmlDiff,
   fromlines : Array[String],
   tolines : Array[String],
-  fromdesc? : String = "",
-  todesc? : String = "",
-  context? : Bool = false,
-  numlines? : Int = 5,
+  fromdesc~ : String = "",
+  todesc~ : String = "",
+  context~ : Bool = false,
+  numlines~ : Int32 = 5,
 ) -> String {
   if numlines < 0 {
     // Python fails with IndexError / ZeroDivisionError here.

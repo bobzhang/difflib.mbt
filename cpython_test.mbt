@@ -11,7 +11,7 @@ fn opcodes_text(ops : Array[@difflib.Opcode]) -> String {
 }
 
 ///|
-fn approx_eq(x : Double, y : Double, places : Int) -> Bool {
+fn approx_eq(x : Double, y : Double, places : Int32) -> Bool {
   let mut scale = 1.0
   for _ in 0..<places {
     scale *= 10.0
@@ -211,7 +211,10 @@ test "TestAutojunk.test_htmldiff" {
 ///|
 test "TestSFbugs.test_ratio_for_null_seqn" {
   // Check clearing of SF bug 763023
-  let s : @difflib.SequenceMatcher[Int] = @difflib.SequenceMatcher::new(a=[], b=[])
+  let s : @difflib.SequenceMatcher[Int32] = @difflib.SequenceMatcher::new(
+    a=[],
+    b=[],
+  )
   inspect(s.ratio(), content="1")
   inspect(s.quick_ratio(), content="1")
   inspect(s.real_quick_ratio(), content="1")
@@ -593,7 +596,7 @@ test "TestJunkAPIs.test_is_character_junk" {
 }
 
 ///|
-fn longer_match_exists(a : String, b : String, n : Int) -> Bool {
+fn longer_match_exists(a : String, b : String, n : Int32) -> Bool {
   let b = chars(b)
   for i in 0..<(b.length() - n - 1) {
     let part = String::from_array(b[i:i + n + 1])
@@ -605,7 +608,7 @@ fn longer_match_exists(a : String, b : String, n : Int) -> Bool {
 }
 
 ///|
-fn slice(s : String, start : Int, end : Int) -> String {
+fn slice(s : String, start : Int32, end : Int32) -> String {
   String::from_array(chars(s)[start:end])
 }
 

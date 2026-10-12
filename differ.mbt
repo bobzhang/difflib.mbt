@@ -55,7 +55,7 @@ pub struct Differ {
 pub fn Differ::new(
   linejunk? : (String) -> Bool,
   charjunk? : (Char) -> Bool,
-  autojunk? : Bool = true,
+  autojunk~ : Bool = true,
 ) -> Differ {
   { linejunk, charjunk, autojunk, }
 }
@@ -122,7 +122,12 @@ pub fn Differ::compare(
 
 ///|
 /// Generates the comparison results for a same-tagged range.
-fn dump(tag : String, x : Array[String], lo : Int, hi : Int) -> Iter[String] {
+fn dump(
+  tag : String,
+  x : Array[String],
+  lo : Int32,
+  hi : Int32,
+) -> Iter[String] {
   [|
     for line in x[lo:hi] => "\{tag} \{line}"
   |]
@@ -131,11 +136,11 @@ fn dump(tag : String, x : Array[String], lo : Int, hi : Int) -> Iter[String] {
 ///|
 fn plain_replace(
   a : Array[String],
-  alo : Int,
-  ahi : Int,
+  alo : Int32,
+  ahi : Int32,
   b : Array[String],
-  blo : Int,
-  bhi : Int,
+  blo : Int32,
+  bhi : Int32,
 ) -> Iter[String] {
   // dump the shorter block first -- reduces the burden on short-term
   // memory if the blocks are of very different sizes
@@ -158,11 +163,11 @@ fn plain_replace(
 fn Differ::fancy_replace(
   self : Differ,
   a : Array[String],
-  alo : Int,
-  ahi : Int,
+  alo : Int32,
+  ahi : Int32,
   b : Array[String],
-  blo : Int,
-  bhi : Int,
+  blo : Int32,
+  bhi : Int32,
 ) -> Iter[String] {
   // Don't synch up unless the lines have a similarity score above cutoff.
   let cutoff = 0.74999
@@ -173,12 +178,12 @@ fn Differ::fancy_replace(
   // Character arrays for each line, computed on first use and kept so that
   // `set_seq1` / `set_seq2` can reuse cached state for identical sequences.
   // An entry is recomputed if the input line was replaced in the meantime.
-  let a_cache : Map[Int, (String, Array[Char])] = Map([])
-  let b_cache : Map[Int, (String, Array[Char])] = Map([])
+  let a_cache : Map[Int32, (String, Array[Char])] = Map([])
+  let b_cache : Map[Int32, (String, Array[Char])] = Map([])
   let chars_at = (
-    cache : Map[Int, (String, Array[Char])],
+    cache : Map[Int32, (String, Array[Char])],
     x : Array[String],
-    i : Int,
+    i : Int32,
   ) => {
     let line = x[i]
     match cache.get(i) {
@@ -190,8 +195,8 @@ fn Differ::fancy_replace(
       }
     }
   }
-  let a_at = (i : Int) => chars_at(a_cache, a, i)
-  let b_at = (j : Int) => chars_at(b_cache, b, j)
+  let a_at = (i : Int32) => chars_at(a_cache, a, i)
+  let b_at = (j : Int32) => chars_at(b_cache, b, j)
   let window = 10
   // smallest indices not yet resolved
   let mut dump_i = alo
@@ -286,7 +291,7 @@ fn Differ::fancy_replace(
 }
 
 ///|
-fn repeat_char(buf : StringBuilder, c : Char, n : Int) -> Unit {
+fn repeat_char(buf : StringBuilder, c : Char, n : Int32) -> Unit {
   for _ in 0..<n {
     buf.write_char(c)
   }
@@ -295,11 +300,11 @@ fn repeat_char(buf : StringBuilder, c : Char, n : Int) -> Unit {
 ///|
 fn fancy_helper(
   a : Array[String],
-  alo : Int,
-  ahi : Int,
+  alo : Int32,
+  ahi : Int32,
   b : Array[String],
-  blo : Int,
-  bhi : Int,
+  blo : Int32,
+  bhi : Int32,
 ) -> Iter[String] {
   if alo < ahi {
     if blo < bhi {
@@ -418,8 +423,8 @@ pub fn ndiff(
   a : Array[String],
   b : Array[String],
   linejunk? : (String) -> Bool,
-  charjunk? : (Char) -> Bool = is_character_junk,
-  autojunk? : Bool = true,
+  charjunk~ : (Char) -> Bool = is_character_junk,
+  autojunk~ : Bool = true,
 ) -> Iter[String] {
   Differ::new(linejunk?, charjunk~, autojunk~).compare(a, b)
 }
@@ -455,7 +460,7 @@ pub(all) suberror DiffError {
 /// ```
 pub fn restore(
   delta : Iter[String],
-  which : Int,
+  which : Int32,
 ) -> Iter[String] raise DiffError {
   let tag = match which {
     1 => "- "
