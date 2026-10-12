@@ -18,7 +18,7 @@ test "TestSFbugs.test_mdiff_catch_stop_iteration" {
 ///|
 test "TestSFbugs.test_mdiff_lopsided_replace" {
   let blank : SideLine = { num: Blank, text: "\n", }
-  let side = (n : Int, text : String) => SideLine::{ num: Num(n), text, }
+  let side = (n : Int32, text : String) => SideLine::{ num: Num(n), text, }
   assert_eq(mdiff(Array::make(4, "a\n"), ["b\n"]), [
     Row(side(1, "\u{0}-a\n\u{1}"), side(1, "\u{0}+b\n\u{1}"), true),
     Row(side(2, "\u{0}-a\n\u{1}"), blank, true),

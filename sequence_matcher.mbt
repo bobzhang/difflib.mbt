@@ -3,9 +3,9 @@
 ///
 /// Mirrors Python's `difflib.Match` named tuple.
 pub(all) struct Match {
-  a : Int
-  b : Int
-  size : Int
+  a : Int32
+  b : Int32
+  size : Int32
 } derive(Eq, Compare, Debug, ToJson)
 
 ///|
@@ -43,10 +43,10 @@ pub impl Show for Tag with fn output(self, logger) {
 /// `b[j1:j2]`.
 pub(all) struct Opcode {
   tag : Tag
-  i1 : Int
-  i2 : Int
-  j1 : Int
-  j2 : Int
+  i1 : Int32
+  i2 : Int32
+  j1 : Int32
+  j2 : Int32
 } derive(Eq, Debug, ToJson)
 
 ///|
@@ -86,10 +86,10 @@ pub struct SequenceMatcher[T] {
   priv autojunk : Bool
   priv mut a : Array[T]
   priv mut b : Array[T]
-  priv mut b2j : Map[T, Array[Int]]
+  priv mut b2j : Map[T, Array[Int32]]
   priv mut bjunk : Set[T]
   priv mut bpopular : Set[T]
-  priv mut fullbcount : Map[T, Int]?
+  priv mut fullbcount : Map[T, Int32]?
   priv mut matching_blocks : Array[Match]?
   priv mut opcodes : Array[Opcode]?
 }
@@ -105,9 +105,9 @@ pub struct SequenceMatcher[T] {
 ///   treated as junk.
 pub fn[T : Hash + Eq] SequenceMatcher::new(
   isjunk? : (T) -> Bool,
-  a? : Array[T] = [],
-  b? : Array[T] = [],
-  autojunk? : Bool = true,
+  a~ : Array[T] = [],
+  b~ : Array[T] = [],
+  autojunk~ : Bool = true,
 ) -> SequenceMatcher[T] {
   let self : SequenceMatcher[T] = {
     isjunk,
@@ -176,7 +176,7 @@ pub fn[T : Hash + Eq] SequenceMatcher::set_seq2(
 /// increasing list of indices where it occurs.
 fn[T : Hash + Eq] SequenceMatcher::chain_b(self : SequenceMatcher[T]) -> Unit {
   let b = self.b
-  let b2j : Map[T, Array[Int]] = Map([])
+  let b2j : Map[T, Array[Int32]] = Map([])
   for i, elt in b {
     match b2j.get(elt) {
       Some(indices) => indices.push(i)
@@ -254,10 +254,10 @@ pub fn[T] SequenceMatcher::bpopular(self : SequenceMatcher[T]) -> Array[T] {
 /// ```
 pub fn[T : Hash + Eq] SequenceMatcher::find_longest_match(
   self : SequenceMatcher[T],
-  alo? : Int = 0,
-  ahi? : Int,
-  blo? : Int = 0,
-  bhi? : Int,
+  alo~ : Int32 = 0,
+  ahi? : Int32,
+  blo~ : Int32 = 0,
+  bhi? : Int32,
 ) -> Match {
   let a = self.a
   let b = self.b
@@ -271,9 +271,9 @@ pub fn[T : Hash + Eq] SequenceMatcher::find_longest_match(
   // find longest junk-free match
   // during an iteration of the loop, j2len[j] = length of longest
   // junk-free match ending with a[i-1] and b[j]
-  let mut j2len : Map[Int, Int] = Map([])
+  let mut j2len : Map[Int32, Int32] = Map([])
   for i in alo..<ahi {
-    let newj2len : Map[Int, Int] = Map([])
+    let newj2len : Map[Int32, Int32] = Map([])
     if b2j.get(a[i]) is Some(indices) {
       for j in indices {
         // a[i] matches b[j]
@@ -513,7 +513,7 @@ pub fn[T : Hash + Eq] SequenceMatcher::get_opcodes(
 /// Panics if `n` is negative (Python returns meaningless ranges).
 pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(
   self : SequenceMatcher[T],
-  n? : Int = 3,
+  n~ : Int32 = 3,
 ) -> Iter[Array[Opcode]] {
   if n < 0 {
     abort("get_grouped_opcodes: n must be >= 0, got \{n}")
@@ -524,7 +524,7 @@ pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(
 ///|
 fn[T : Hash + Eq] SequenceMatcher::grouped_opcodes(
   self : SequenceMatcher[T],
-  n : Int,
+  n : Int32,
 ) -> Iter[Array[Opcode]] {
   // Any n >= max(len(a), len(b), 1) gives the same groups, so clamp it;
   // the additions below saturate, so even huge inputs cannot overflow.
@@ -604,7 +604,7 @@ fn[T : Hash + Eq] SequenceMatcher::grouped_opcodes(
 
 ///|
 /// Non-negative addition that saturates at the maximum `Int`.
-fn add_sat(x : Int, y : Int) -> Int {
+fn add_sat(x : Int32, y : Int32) -> Int32 {
   let sum = x.to_int64() + y.to_int64()
   if sum > 2147483647L {
     2147483647
@@ -614,7 +614,7 @@ fn add_sat(x : Int, y : Int) -> Int {
 }
 
 ///|
-fn calculate_ratio(matches : Int, length : Int) -> Double {
+fn calculate_ratio(matches : Int32, length : Int32) -> Double {
   if length != 0 {
     2.0 * matches.to_double() / length.to_double()
   } else {
@@ -658,7 +658,7 @@ pub fn[T : Hash + Eq] SequenceMatcher::quick_ratio(
   let fullbcount = match self.fullbcount {
     Some(counts) => counts
     None => {
-      let counts : Map[T, Int] = Map([])
+      let counts : Map[T, Int32] = Map([])
       for elt in self.b {
         counts[elt] = counts.get(elt).unwrap_or(0) + 1
       }
@@ -668,7 +668,7 @@ pub fn[T : Hash + Eq] SequenceMatcher::quick_ratio(
   }
   // avail[x] is the number of times x appears in 'b' less the
   // number of times we've seen it in 'a' so far
-  let avail : Map[T, Int] = Map([])
+  let avail : Map[T, Int32] = Map([])
   let mut matches = 0
   for elt in self.a {
     let numb = match avail.get(elt) {

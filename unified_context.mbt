@@ -1,6 +1,6 @@
 ///|
 /// Converts a range to the "ed" format used by unified diffs.
-fn format_range_unified(start : Int, stop : Int) -> String {
+fn format_range_unified(start : Int32, stop : Int32) -> String {
   // Per the diff spec at http://www.unix.org/single_unix_specification/
   let mut beginning = start + 1 // lines start numbering with one
   let length = stop - start
@@ -92,14 +92,14 @@ let no_color_theme : DiffTheme = {
 pub fn unified_diff(
   a : Array[String],
   b : Array[String],
-  fromfile? : String = "",
-  tofile? : String = "",
-  fromfiledate? : String = "",
-  tofiledate? : String = "",
-  n? : Int = 3,
-  lineterm? : String = "\n",
-  autojunk? : Bool = true,
-  color? : Bool = false,
+  fromfile~ : String = "",
+  tofile~ : String = "",
+  fromfiledate~ : String = "",
+  tofiledate~ : String = "",
+  n~ : Int32 = 3,
+  lineterm~ : String = "\n",
+  autojunk~ : Bool = true,
+  color~ : Bool = false,
 ) -> Iter[String] {
   check_context_size(n)
   let t = if color { color_theme } else { no_color_theme }
@@ -152,7 +152,7 @@ pub fn unified_diff(
 }
 
 ///|
-fn check_context_size(n : Int) -> Unit {
+fn check_context_size(n : Int32) -> Unit {
   if n < 0 {
     abort("the number of context lines must be >= 0, got \{n}")
   }
@@ -160,7 +160,7 @@ fn check_context_size(n : Int) -> Unit {
 
 ///|
 /// Converts a range to the "ed" format used by context diffs.
-fn format_range_context(start : Int, stop : Int) -> String {
+fn format_range_context(start : Int32, stop : Int32) -> String {
   // Per the diff spec at http://www.unix.org/single_unix_specification/
   let mut beginning = start + 1 // lines start numbering with one
   let length = stop - start
@@ -222,13 +222,13 @@ fn context_prefix(tag : Tag) -> String {
 pub fn context_diff(
   a : Array[String],
   b : Array[String],
-  fromfile? : String = "",
-  tofile? : String = "",
-  fromfiledate? : String = "",
-  tofiledate? : String = "",
-  n? : Int = 3,
-  lineterm? : String = "\n",
-  autojunk? : Bool = true,
+  fromfile~ : String = "",
+  tofile~ : String = "",
+  fromfiledate~ : String = "",
+  tofiledate~ : String = "",
+  n~ : Int32 = 3,
+  lineterm~ : String = "\n",
+  autojunk~ : Bool = true,
 ) -> Iter[String] {
   check_context_size(n)
   deferred(() => {
@@ -350,13 +350,13 @@ pub fn diff_bytes(
   format : DiffFormat,
   a : Array[Bytes],
   b : Array[Bytes],
-  fromfile? : Bytes = b"",
-  tofile? : Bytes = b"",
-  fromfiledate? : Bytes = b"",
-  tofiledate? : Bytes = b"",
-  n? : Int = 3,
-  lineterm? : Bytes = b"\n",
-  autojunk? : Bool = true,
+  fromfile~ : Bytes = b"",
+  tofile~ : Bytes = b"",
+  fromfiledate~ : Bytes = b"",
+  tofiledate~ : Bytes = b"",
+  n~ : Int32 = 3,
+  lineterm~ : Bytes = b"\n",
+  autojunk~ : Bool = true,
 ) -> Iter[Bytes] {
   check_context_size(n)
   deferred(() => {

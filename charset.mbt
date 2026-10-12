@@ -10,7 +10,7 @@ fn normalize_encoding(name : String) -> String {
   let buf = StringBuilder()
   let mut punct = false
   for c in name.to_lower() {
-    if c is ('a'..='z' | '0'..='9' | '.') {
+    if c is ('a'..<='z' | '0'..<='9' | '.') {
       if punct && buf.to_string() != "" {
         buf.write_char('_')
       }

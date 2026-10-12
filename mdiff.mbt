@@ -11,7 +11,7 @@
 /// A line number column entry: Python uses an `int`, `''` (a padding line),
 /// or `'>'` (a wrapped continuation line).
 priv enum LineNum {
-  Num(Int)
+  Num(Int32)
   Blank
   Cont
 } derive(Eq, Debug)
@@ -49,7 +49,7 @@ priv enum MdiffRow {
 
 ///|
 /// Returns the code-point substring `s[start:]`.
-fn drop_chars(s : String, start : Int) -> String {
+fn drop_chars(s : String, start : Int32) -> String {
   let chars = s.to_array()
   if start >= chars.length() {
     ""
@@ -62,7 +62,7 @@ fn drop_chars(s : String, start : Int) -> String {
 /// State shared by the line-level helpers of [mdiff].
 priv struct MdiffState {
   diff_lines : Iter[String]
-  num_lines : FixedArray[Int]
+  num_lines : FixedArray[Int32]
 }
 
 ///|
@@ -82,7 +82,7 @@ fn MdiffState::make_line(
   self : MdiffState,
   lines : Array[String],
   format_key : Char?,
-  side : Int,
+  side : Int32,
 ) -> SideLine {
   self.num_lines[side] += 1
   let num = Num(self.num_lines[side])
@@ -92,7 +92,7 @@ fn MdiffState::make_line(
       let text = lines.remove(0).to_array()
       let markers = lines.remove(0).to_array()
       // find intraline changes: runs of '+', '-' or '^'
-      let sub_info : Array[(Char, Int, Int)] = []
+      let sub_info : Array[(Char, Int32, Int32)] = []
       let mut i = 0
       while i < markers.length() {
         let c = markers[i]
@@ -289,10 +289,10 @@ fn line_pair_iterator(
 fn mdiff(
   fromlines : Array[String],
   tolines : Array[String],
-  context? : Int,
+  context? : Int32,
   linejunk? : (String) -> Bool,
-  charjunk? : (Char) -> Bool = is_character_junk,
-  autojunk? : Bool = true,
+  charjunk~ : (Char) -> Bool = is_character_junk,
+  autojunk~ : Bool = true,
 ) -> Array[MdiffRow] {
   let diff_lines = ndiff(fromlines, tolines, linejunk?, charjunk~, autojunk~)
   let state : MdiffState = { diff_lines, num_lines: FixedArray::make(2, 0), }

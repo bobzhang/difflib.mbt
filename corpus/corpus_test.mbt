@@ -16,13 +16,13 @@ fn str_field(case_ : Json, key : String) -> String {
 }
 
 ///|
-fn int_of(j : Json) -> Int {
+fn int_of(j : Json) -> Int32 {
   guard j is Number(n, ..) else { abort("not a number") }
   n.to_int()
 }
 
 ///|
-fn int_field(case_ : Json, key : String) -> Int {
+fn int_field(case_ : Json, key : String) -> Int32 {
   int_of(field(case_, key))
 }
 
@@ -474,7 +474,7 @@ fn check_surrogate(case_ : Json) -> Unit raise {
 
 ///|
 test "differential corpus from CPython difflib" {
-  let counts : Map[String, Int] = Map([])
+  let counts : Map[String, Int32] = Map([])
   for line in corpus.split("\n") {
     let case_ = @json.parse(line)
     let kind = str_field(case_, "kind")
