@@ -2,14 +2,16 @@
 /// A matching block: `a[a:a+size] == b[b:b+size]`.
 ///
 /// Mirrors Python's `difflib.Match` named tuple.
+#derive(Eq, Compare, Debug, ToJson)
 pub(all) struct Match {
   a : Int32
   b : Int32
   size : Int32
-} derive(Eq, Compare, Debug, ToJson)
+}
 
 ///|
 /// The kind of edit an [Opcode] describes.
+#derive(Eq, Debug, ToJson)
 pub(all) enum Tag {
   /// `a[i1:i2]` should be replaced by `b[j1:j2]`.
   Replace
@@ -19,7 +21,7 @@ pub(all) enum Tag {
   Insert
   /// `a[i1:i2] == b[j1:j2]`.
   Equal
-} derive(Eq, Debug, ToJson)
+}
 
 ///|
 /// Returns the tag name used by Python (`"replace"`, `"delete"`, `"insert"`,
@@ -41,13 +43,14 @@ pub impl Show for Tag with fn output(self, logger) {
 ///|
 /// A 5-tuple `(tag, i1, i2, j1, j2)` describing how to turn `a[i1:i2]` into
 /// `b[j1:j2]`.
+#derive(Eq, Debug, ToJson)
 pub(all) struct Opcode {
   tag : Tag
   i1 : Int32
   i2 : Int32
   j1 : Int32
   j2 : Int32
-} derive(Eq, Debug, ToJson)
+}
 
 ///|
 /// Compares pairs of sequences of any hashable element type.

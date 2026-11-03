@@ -431,9 +431,10 @@ pub fn ndiff(
 
 ///|
 /// Errors raised for invalid arguments, mirroring Python's `ValueError`.
+#derive(Eq, Debug)
 pub(all) suberror DiffError {
   ValueError(String)
-} derive(Eq, Debug)
+}
 
 ///|
 /// Extracts one of the two sequences that generated an [ndiff] / [Differ]
