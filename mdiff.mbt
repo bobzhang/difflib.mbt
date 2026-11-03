@@ -10,11 +10,12 @@
 ///|
 /// A line number column entry: Python uses an `int`, `''` (a padding line),
 /// or `'>'` (a wrapped continuation line).
+#derive(Eq, Debug)
 priv enum LineNum {
   Num(Int32)
   Blank
   Cont
-} derive(Eq, Debug)
+}
 
 ///|
 fn LineNum::is_truthy(self : LineNum) -> Bool {
@@ -32,20 +33,22 @@ fn LineNum::to_column(self : LineNum) -> String {
 
 ///|
 /// One side of a side by side row: `(line number, marked-up text)`.
+#derive(Eq, Debug)
 priv struct SideLine {
   num : LineNum
   text : String
-} derive(Eq, Debug)
+}
 
 ///|
 /// A row produced by [mdiff]: either a from/to pair with a "has changes"
 /// flag, or a context separator (Python's `(None, None, None)`).
 /// `Eq` and `Debug` are only used by the whitebox tests.
+#derive(Eq, Debug)
 #warnings("-unused_value")
 priv enum MdiffRow {
   Row(SideLine, SideLine, Bool)
   Separator
-} derive(Eq, Debug)
+}
 
 ///|
 /// Returns the code-point substring `s[start:]`.

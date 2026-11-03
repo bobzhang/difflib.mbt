@@ -291,12 +291,13 @@ pub fn context_diff(
 
 ///|
 /// The output format used by [diff_bytes].
+#derive(Eq, Debug)
 pub(all) enum DiffFormat {
   /// [unified_diff]
   Unified
   /// [context_diff]
   Context
-} derive(Eq, Debug)
+}
 
 ///|
 /// Decodes bytes losslessly into a string, one character per byte.

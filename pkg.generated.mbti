@@ -3,14 +3,15 @@ package "bobzhang/difflib"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
-pub fn context_diff(Array[String], Array[String], fromfile? : String, tofile? : String, fromfiledate? : String, tofiledate? : String, n? : Int, lineterm? : String, autojunk? : Bool) -> Iter[String]
+pub fn context_diff(Array[String], Array[String], fromfile? : String, tofile? : String, fromfiledate? : String, tofiledate? : String, n? : Int32, lineterm? : String, autojunk? : Bool) -> Iter[String]
 
-pub fn diff_bytes(DiffFormat, Array[Bytes], Array[Bytes], fromfile? : Bytes, tofile? : Bytes, fromfiledate? : Bytes, tofiledate? : Bytes, n? : Int, lineterm? : Bytes, autojunk? : Bool) -> Iter[Bytes]
+pub fn diff_bytes(DiffFormat, Array[Bytes], Array[Bytes], fromfile? : Bytes, tofile? : Bytes, fromfiledate? : Bytes, tofiledate? : Bytes, n? : Int32, lineterm? : Bytes, autojunk? : Bool) -> Iter[Bytes]
 
-pub fn get_close_matches(String, Array[String], n? : Int, cutoff? : Double, autojunk? : Bool) -> Array[String] raise DiffError
+pub fn get_close_matches(String, Array[String], n? : Int32, cutoff? : Double, autojunk? : Bool) -> Array[String] raise DiffError
 
 pub fn is_character_junk(Char) -> Bool
 
@@ -18,20 +19,22 @@ pub fn is_line_junk(String) -> Bool
 
 pub fn ndiff(Array[String], Array[String], linejunk? : (String) -> Bool, charjunk? : (Char) -> Bool, autojunk? : Bool) -> Iter[String]
 
-pub fn restore(Iter[String], Int) -> Iter[String] raise DiffError
+pub fn restore(Iter[String], Int32) -> Iter[String] raise DiffError
 
-pub fn unified_diff(Array[String], Array[String], fromfile? : String, tofile? : String, fromfiledate? : String, tofiledate? : String, n? : Int, lineterm? : String, autojunk? : Bool, color? : Bool) -> Iter[String]
+pub fn unified_diff(Array[String], Array[String], fromfile? : String, tofile? : String, fromfiledate? : String, tofiledate? : String, n? : Int32, lineterm? : String, autojunk? : Bool, color? : Bool) -> Iter[String]
 
 // Errors
+#derive(Eq, @debug.Debug)
 pub(all) suberror DiffError {
   ValueError(String)
-} derive(Eq, @debug.Debug)
+}
 
 // Types and methods
+#derive(Eq, @debug.Debug)
 pub(all) enum DiffFormat {
   Unified
   Context
-} derive(Eq, @debug.Debug)
+}
 
 pub struct Differ {
   // private fields
@@ -42,32 +45,34 @@ pub fn Differ::new(linejunk? : (String) -> Bool, charjunk? : (Char) -> Bool, aut
 pub struct HtmlDiff {
   // private fields
 }
-pub fn HtmlDiff::make_file(Self, Array[String], Array[String], fromdesc? : String, todesc? : String, context? : Bool, numlines? : Int, charset? : String) -> String
-pub fn HtmlDiff::make_table(Self, Array[String], Array[String], fromdesc? : String, todesc? : String, context? : Bool, numlines? : Int) -> String
-pub fn HtmlDiff::new(tabsize? : Int, wrapcolumn? : Int, linejunk? : (String) -> Bool, charjunk? : (Char) -> Bool, autojunk? : Bool) -> Self
-pub fn HtmlDiff::reset_prefix_counter(value? : Int) -> Unit
+pub fn HtmlDiff::make_file(Self, Array[String], Array[String], fromdesc? : String, todesc? : String, context? : Bool, numlines? : Int32, charset? : String) -> String
+pub fn HtmlDiff::make_table(Self, Array[String], Array[String], fromdesc? : String, todesc? : String, context? : Bool, numlines? : Int32) -> String
+pub fn HtmlDiff::new(tabsize? : Int32, wrapcolumn? : Int32, linejunk? : (String) -> Bool, charjunk? : (Char) -> Bool, autojunk? : Bool) -> Self
+pub fn HtmlDiff::reset_prefix_counter(value? : Int32) -> Unit
 
+#derive(Compare, Eq, @debug.Debug, @json.ToJson)
 pub(all) struct Match {
-  a : Int
-  b : Int
-  size : Int
-} derive(Compare, Eq, ToJson, @debug.Debug)
+  a : Int32
+  b : Int32
+  size : Int32
+}
 
+#derive(Eq, @debug.Debug, @json.ToJson)
 pub(all) struct Opcode {
   tag : Tag
-  i1 : Int
-  i2 : Int
-  j1 : Int
-  j2 : Int
-} derive(Eq, ToJson, @debug.Debug)
+  i1 : Int32
+  i2 : Int32
+  j1 : Int32
+  j2 : Int32
+}
 
 pub struct SequenceMatcher[T] {
   // private fields
 }
 pub fn[T] SequenceMatcher::bjunk(Self[T]) -> Array[T]
 pub fn[T] SequenceMatcher::bpopular(Self[T]) -> Array[T]
-pub fn[T : Hash + Eq] SequenceMatcher::find_longest_match(Self[T], alo? : Int, ahi? : Int, blo? : Int, bhi? : Int) -> Match
-pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(Self[T], n? : Int) -> Iter[Array[Opcode]]
+pub fn[T : Hash + Eq] SequenceMatcher::find_longest_match(Self[T], alo? : Int32, ahi? : Int32, blo? : Int32, bhi? : Int32) -> Match
+pub fn[T : Hash + Eq] SequenceMatcher::get_grouped_opcodes(Self[T], n? : Int32) -> Iter[Array[Opcode]]
 pub fn[T : Hash + Eq] SequenceMatcher::get_matching_blocks(Self[T]) -> Array[Match]
 pub fn[T : Hash + Eq] SequenceMatcher::get_opcodes(Self[T]) -> Array[Opcode]
 pub fn[T : Hash + Eq] SequenceMatcher::new(isjunk? : (T) -> Bool, a? : Array[T], b? : Array[T], autojunk? : Bool) -> Self[T]
@@ -78,12 +83,13 @@ pub fn[T] SequenceMatcher::set_seq1(Self[T], Array[T]) -> Unit
 pub fn[T : Hash + Eq] SequenceMatcher::set_seq2(Self[T], Array[T]) -> Unit
 pub fn[T : Hash + Eq] SequenceMatcher::set_seqs(Self[T], Array[T], Array[T]) -> Unit
 
+#derive(Eq, @debug.Debug, @json.ToJson)
 pub(all) enum Tag {
   Replace
   Delete
   Insert
   Equal
-} derive(Eq, ToJson, @debug.Debug)
+}
 pub fn Tag::name(Self) -> String
 pub impl Show for Tag
 
