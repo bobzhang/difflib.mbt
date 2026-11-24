@@ -287,7 +287,7 @@ fn Differ::fancy_replace(
       }),
     )
   }
-  Iter::new(step).flatten()
+  Iter::Iter(step).flatten()
 }
 
 ///|
