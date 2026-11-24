@@ -3,7 +3,7 @@
 /// requested, like the body of a Python generator function.
 fn[T] deferred(make : () -> Iter[T]) -> Iter[T] {
   let mut inner : Iter[T]? = None
-  Iter::new(() => {
+  Iter::Iter(() => {
     let it = match inner {
       Some(it) => it
       None => {

@@ -191,7 +191,7 @@ fn[T : Hash + Eq] SequenceMatcher::chain_b(self : SequenceMatcher[T]) -> Unit {
   if self.isjunk is Some(isjunk) {
     for elt, _ in b2j {
       if isjunk(elt) {
-        junk.add(elt)
+        junk.insert(elt)
       }
     }
     for elt in junk {
@@ -205,7 +205,7 @@ fn[T : Hash + Eq] SequenceMatcher::chain_b(self : SequenceMatcher[T]) -> Unit {
     let ntest = n / 100 + 1
     for elt, idxs in b2j {
       if idxs.length() > ntest {
-        popular.add(elt)
+        popular.insert(elt)
       }
     }
     for elt in popular {
@@ -565,7 +565,7 @@ fn[T : Hash + Eq] SequenceMatcher::grouped_opcodes(
   let mut index = 0
   let mut group : Array[Opcode] = []
   let mut finished = false
-  Iter::new(() => {
+  Iter::Iter(() => {
     while index < codes.length() {
       let { tag, i1, i2, j1, j2, } = codes[index]
       index += 1
